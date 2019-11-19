@@ -74,16 +74,16 @@ endif ()
 
 # mercury (note that margo uses the mercury rpc class)
 if (PDLFS_MERCURY_RPC OR PDLFS_MARGO_RPC)
-    set (pdlfs-mercury-srcs mercury_rpc.cc)
+    set (pdlfs-mercury-srcs mercury/mercury_rpc.cc)
     if (PDLFS_MERCURY_RPC)
-        set (pdlfs-mercury-tests mercury_test.cc)
+        set (pdlfs-mercury-tests mercury/mercury_test.cc)
     endif ()
 endif ()
 
 # margo
 if (PDLFS_MARGO_RPC)
-    set (pdlfs-margo-srcs margo_rpc.cc)
-    set (pdlfs-margo-tests margo_test.cc)
+    set (pdlfs-margo-srcs margo/margo_rpc.cc)
+    set (pdlfs-margo-tests margo/margo_test.cc)
 endif ()
 
 # rados directory and tests
