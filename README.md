@@ -5,7 +5,7 @@
 IndexFS by DeltaFS
 =======
 
-This is the DeltaFS re-implementation of the [IndexFS](https://dl.acm.org/citation.cfm?id=2683620) paper published by Kai, Qing, and Garth at [IEEE/ACM SC 2014](http://sc14.supercomputing.org/). THIS IS NOT THE ORIGINAL INDEXFS CODE. The original IndexFS code is written by Kai and Qing and is available [here](https://github.com/zhengqmark/indexfs-0.4). Internally, DeltaFS uses this re-implementation of IndexFS to evaluate different distributed filesystem metadata designs and to assist DeltaFS development. This re-implementation reuses some of the DeltaFS code. Again, this is not the original IndexFS code.
+This is the DeltaFS re-implementation of the [IndexFS](https://dl.acm.org/citation.cfm?id=2683620) paper of CMU published by Kai, Qing, and Garth at [IEEE/ACM SC 2014](http://sc14.supercomputing.org/). THIS IS *NOT* THE ORIGINAL INDEXFS CODE. The original IndexFS code is written by Kai and Qing and is available at [https://github.com/zhengqmark/indexfs-0.4](https://github.com/zhengqmark/indexfs-0.4). Internally, DeltaFS uses this re-implementation of IndexFS to evaluate different distributed filesystem metadata design options and to assist DeltaFS development. This re-implementation reuses some of the DeltaFS code. Again, this is not the original IndexFS code.
 
 ```
 XXXXXXXXX
