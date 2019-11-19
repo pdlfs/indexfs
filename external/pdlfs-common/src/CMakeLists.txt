@@ -25,7 +25,7 @@
 
 # main directory sources and tests
 set (pdlfs-common-srcs arena.cc cache.cc coding.cc crc32c/crc32c.cc
-     crc32c/crc32c_internal.cc crc32c/crc32c_sse42.cc env.cc
+     crc32c/crc32c_sw.cc crc32c/crc32c_sse42.cc env.cc
      env_files.cc fsdbx.cc fstypes.cc hash.cc histogram.cc
      log_reader.cc log_writer.cc logging.cc murmur.cc
      port_posix.cc posix_env.cc posix_logger.cc posix_netdev.cc
