@@ -106,8 +106,8 @@ set (PDLFS_COMMON_DEFINES "INDEXFS" CACHE
         STRING "Additional defines for this version of pdlfs-common")
 mark_as_advanced (PDLFS_DFS_COMMON PDLFS_COMMON_LIBNAME PDLFS_COMMON_DEFINES)
 set (INDEXFS_CXX_STANDARD "11" CACHE STRING "C++ std to probe")
-set (INDEXFSFS_CXX_STANDARD_REQUIRED "OFF" CACHE BOOL "C++ std must be met")
-mark_as_advanced (INDEXFS_CXX_STANDARD INDEXFSFS_CXX_STANDARD_REQUIRED)
+set (INDEXFS_CXX_STANDARD_REQUIRED "OFF" CACHE BOOL "C++ std must be met")
+mark_as_advanced (INDEXFS_CXX_STANDARD INDEXFS_CXX_STANDARD_REQUIRED)
 set_property (CACHE INDEXFS_CXX_STANDARD PROPERTY STRINGS "98" "11")
 
 # note: CMAKE_CXX_STANDARD is not defined until cmake 3.1, and will be
@@ -120,13 +120,13 @@ if (CMAKE_VERSION VERSION_LESS "3.1")
     if (${flag${cxxstdflag}})
         add_compile_options (${cxxstdflag})
     else ()
-        if (INDEXFSFS_CXX_STANDARD_REQUIRED)
+        if (INDEXFS_CXX_STANDARD_REQUIRED)
             message (FATAL_ERROR "Fail to enable CXX ${INDEXFS_CXX_STANDARD}")
         endif ()
     endif ()
 else ()
     set (CMAKE_CXX_STANDARD ${INDEXFS_CXX_STANDARD})
-    set (CMAKE_CXX_STANDARD_REQUIRED ${INDEXFSFS_CXX_STANDARD_REQUIRED})
+    set (CMAKE_CXX_STANDARD_REQUIRED ${INDEXFS_CXX_STANDARD_REQUIRED})
 endif ()
 
 # pull in pdlfs handling of generic cmake config
