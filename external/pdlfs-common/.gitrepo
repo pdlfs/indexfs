@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:pdlfs/pdlfs-common.git
+	branch = master
+	commit = b30382709e1dffa851cba179605370d1a94131d0
+	parent = 9be13f8867acca9beea556bc34023d5e89e7485d
+	method = merge
+	cmdver = 0.4.0
