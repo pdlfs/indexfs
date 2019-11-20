@@ -26,11 +26,11 @@
 #include <vector>
 
 #if defined(PDLFS_MARGO_RPC)
-#include "margo_rpc.h"
+#include "margo/margo_rpc.h"
 #endif
 
 #if defined(PDLFS_MERCURY_RPC)
-#include "mercury_rpc.h"
+#include "mercury/mercury_rpc.h"
 #endif
 
 namespace pdlfs {
