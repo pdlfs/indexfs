@@ -28,7 +28,8 @@
 #endif
 
 #if defined(PDLFS_PLATFORM_POSIX)
-#include "posix_logger.h"
+#include "posix/posix_env.h"
+#include "posix/posix_logger.h"
 #endif
 
 #if defined(PDLFS_GLOG)

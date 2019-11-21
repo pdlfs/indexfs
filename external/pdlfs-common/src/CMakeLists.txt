@@ -27,8 +27,8 @@
 set (pdlfs-common-srcs arena.cc cache.cc coding.cc crc32c/crc32c.cc
      crc32c/crc32c_sw.cc crc32c/crc32c_sse42.cc env.cc
      env_files.cc fsdbx.cc fstypes.cc hash.cc histogram.cc
-     log_reader.cc log_writer.cc logging.cc murmur.cc
-     port_posix.cc posix_env.cc posix_logger.cc posix_netdev.cc
+     log_reader.cc log_writer.cc logging.cc murmur.cc posix/port_posix.cc
+     posix/posix_env.cc posix/posix_logger.cc posix/posix_netdev.cc
      random.cc slice.cc spooky.cc spooky_impl.cc
      status.cc strutil.cc testharness.cc testutil.cc
      xxhash.cc xxhash_impl.cc)
@@ -59,7 +59,7 @@ set (pdlfs-leveldb-tests bloom_test.cc db/autocompact_test.cc
 if (PDLFS_DFS_COMMON)
     set (pdlfs-dfs-srcs blkdb.cc dcntl.cc fio.cc gigaplus.cc
             index_cache.cc lease.cc lookup_cache.cc mdb.cc
-            osd.cc ofs.cc ofs_impl.cc posix_fio.cc
+            osd.cc ofs.cc ofs_impl.cc posix/posix_fio.cc
             rpc.cc)
     set (pdlfs-dfs-tests blkdb_test.cc fio_test.cc gigaplus_test.cc
             ofs_test.cc osd_test.cc rpc_test.cc)
