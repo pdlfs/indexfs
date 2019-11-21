@@ -453,18 +453,6 @@ class PosixEnv : public Env {
     }
   }
 
-  virtual uint64_t NowMicros() {
-    uint64_t result;
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    result = static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
-    return result;
-  }
-
-  virtual void SleepForMicroseconds(int micros) {
-    usleep(static_cast<unsigned>(micros));
-  }
-
   virtual Status FetchHostname(std::string* hostname) {
     char buf[PDLFS_HOST_NAME_MAX];
     if (gethostname(buf, sizeof(buf)) == -1) {
@@ -741,9 +729,23 @@ Env* PosixGetDirectIOEnv() {
 }
 }  // namespace port
 
+// Return the current time in microseconds.
+uint64_t CurrentMicros() {
+  uint64_t result;
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  result = static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+  return result;
+}
+
+// Sleep for a certain amount of microseconds.
+// We may sleep a bit longer than the specified amount.
+void SleepForMicroseconds(int micros) { usleep(static_cast<unsigned>(micros)); }
+
+// Return the default posix env.
 Env* Env::Default() {
 #if !defined(PDLFS_PLATFORM_POSIX)
-#error "!!! This code should not compile !!!"
+#error "Compiling posix code on a non-posix platform!?"
 #else
   Env* result = port::PosixGetDefaultEnv();
   assert(result != NULL);

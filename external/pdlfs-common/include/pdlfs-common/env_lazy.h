@@ -192,12 +192,6 @@ class LazyInitEnv : public Env {
     }
   }
 
-  virtual uint64_t NowMicros() { return Env::Default()->NowMicros(); }
-
-  virtual void SleepForMicroseconds(int micros) {
-    Env::Default()->SleepForMicroseconds(micros);
-  }
-
   virtual Status FetchHostname(std::string* hostname) {
     Status s = OpenEnv();
     if (s.ok()) {

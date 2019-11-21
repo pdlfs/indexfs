@@ -172,13 +172,6 @@ class Env {
   // Create and return a log file for storing informational messages.
   virtual Status NewLogger(const char* fname, Logger** result) = 0;
 
-  // Returns the number of micro-seconds since some fixed point in time. Only
-  // useful for computing deltas of time.
-  virtual uint64_t NowMicros() = 0;
-
-  // Sleep/delay the thread for the prescribed number of micro-seconds.
-  virtual void SleepForMicroseconds(int micros) = 0;
-
   // Obtain the network name of the local machine.
   virtual Status FetchHostname(std::string* hostname) = 0;
 
@@ -324,6 +317,13 @@ extern Status WriteStringToFileSync(Env* env, const Slice& data,
 // A utility routine: read contents of named file into *data
 extern Status ReadFileToString(Env* env, const char* fname, std::string* data);
 
+// Returns the number of micro-seconds since some fixed point in time.
+// Only useful for computing deltas of time.
+extern uint64_t CurrentMicros();
+
+// Sleep/delay the thread for the prescribed number of micro-seconds.
+extern void SleepForMicroseconds(int micros);
+
 // Background execution service.
 class ThreadPool {
  public:
@@ -436,12 +436,6 @@ class EnvWrapper : public Env {
 
   virtual Status NewLogger(const char* fname, Logger** result) {
     return target_->NewLogger(fname, result);
-  }
-
-  virtual uint64_t NowMicros() { return target_->NowMicros(); }
-
-  void SleepForMicroseconds(int micros) {
-    target_->SleepForMicroseconds(micros);
   }
 
   virtual Status FetchHostname(std::string* hostname) {
