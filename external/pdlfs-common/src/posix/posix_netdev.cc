@@ -57,7 +57,7 @@ Status PosixIf::Open() {
   return s;
 }
 
-// Return all associated network addresses.
+// Return all network addresses associated with us.
 Status FetchHostIPAddrs(std::vector<std::string>* ips) {
   PosixIf sock;
   std::vector<Ifr> results;
