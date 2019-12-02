@@ -15,6 +15,7 @@
  * found at https://github.com/google/leveldb.
  */
 #include "posix_env.h"
+#include "posix_fastcopy.h"
 #include "posix_logger.h"
 
 #include <dirent.h>
@@ -30,41 +31,6 @@
 #endif
 
 namespace pdlfs {
-
-#if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
-static Status OSCopyFile(const char* src, const char* dst) {
-  Status status;
-  int r = -1;
-  int w = -1;
-  if ((r = open(src, O_RDONLY)) == -1) {
-    status = IOError(src, errno);
-  }
-  if (status.ok()) {
-    if ((w = open(dst, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
-      status = IOError(dst, errno);
-    }
-  }
-  if (status.ok()) {
-    int p[2];
-    if (pipe(p) == -1) {
-      status = IOError("pipe", errno);
-    } else {
-      const size_t batch_size = 4096;
-      while (splice(p[0], 0, w, 0, splice(r, 0, p[1], 0, batch_size, 0), 0) > 0)
-        ;
-      close(p[0]);
-      close(p[1]);
-    }
-  }
-  if (r != -1) {
-    close(r);
-  }
-  if (w != -1) {
-    close(w);
-  }
-  return status;
-}
-#endif
 
 // Helper class to limit mmap file usage so that we do not end up
 // running out virtual memory or running into kernel performance
@@ -344,8 +310,8 @@ class PosixEnv : public Env {
   }
 
   virtual Status CopyFile(const char* src, const char* dst) OVERRIDE {
-#if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
-    return OSCopyFile(src, dst);
+#if defined(PDLFS_OS_LINUX)
+    return FastCopy(src, dst);
 #else
     Status status;
     int r = -1;

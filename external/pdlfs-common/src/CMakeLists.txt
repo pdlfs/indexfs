@@ -28,7 +28,8 @@ set (pdlfs-common-srcs arena.cc cache.cc coding.cc crc32c/crc32c.cc
      crc32c/crc32c_sw.cc crc32c/crc32c_sse42.cc env.cc
      env_files.cc fsdbx.cc fstypes.cc hash.cc histogram.cc
      log_reader.cc log_writer.cc logging.cc murmur.cc port_posix.cc
-     posix/posix_env.cc posix/posix_logger.cc posix/posix_net.cc
+     posix/posix_env.cc posix/posix_fastcopy.cc
+     posix/posix_logger.cc posix/posix_net.cc
      random.cc slice.cc spooky.cc spooky_impl.cc
      status.cc strutil.cc testharness.cc testutil.cc
      xxhash.cc xxhash_impl.cc)
