@@ -18,6 +18,8 @@
 
 namespace pdlfs {
 
+// A simple thread pool implementation with a fixed max pool size.
+// Once created, threads keep running until pool destruction.
 class FixedThreadPool : public ThreadPool {
  public:
   FixedThreadPool(int max_threads, bool eager_init = false, void* attr = NULL)
@@ -27,7 +29,7 @@ class FixedThreadPool : public ThreadPool {
         shutting_down_(false),
         paused_(false) {
     if (eager_init) {
-      // Create pool threads immediately
+      // Start pool threads immediately
       MutexLock ml(&mu_);
       InitPool(attr);
     }
