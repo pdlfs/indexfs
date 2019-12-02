@@ -35,7 +35,7 @@ namespace pdlfs {
 
 class PosixEnv : public Env {
  public:
-  explicit PosixEnv(int bg_threads = 1) : pool_(bg_threads) {}
+  explicit PosixEnv(int bg_threads = 1) : tp_(bg_threads) {}
   virtual ~PosixEnv() { abort(); }
 
   virtual Status NewSequentialFile(  ///
@@ -46,7 +46,7 @@ class PosixEnv : public Env {
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
@@ -56,7 +56,7 @@ class PosixEnv : public Env {
     Status s;
     int fd = open(fname, O_RDONLY);
     if (fd < 0) {
-      s = IOError(fname, errno);
+      s = PosixError(fname, errno);
     } else if (!mmap_limit_.Acquire()) {
       *r = new PosixRandomAccessFile(fname, fd);
     } else {
@@ -68,7 +68,7 @@ class PosixEnv : public Env {
           if (base != MAP_FAILED) {
             *r = new PosixMmapReadableFile(fname, base, size, &mmap_limit_);
           } else {
-            s = IOError(fname, errno);
+            s = PosixError(fname, errno);
           }
         } else {
           *r = new PosixEmptyFile();
@@ -89,7 +89,7 @@ class PosixEnv : public Env {
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
@@ -109,14 +109,14 @@ class PosixEnv : public Env {
       closedir(dir);
       return Status::OK();
     } else {
-      return IOError(dirname, errno);
+      return PosixError(dirname, errno);
     }
   }
 
   virtual Status DeleteFile(const char* fname) OVERRIDE {
     Status result;
     if (unlink(fname) != 0) {
-      result = IOError(fname, errno);
+      result = PosixError(fname, errno);
     }
     return result;
   }
@@ -124,7 +124,7 @@ class PosixEnv : public Env {
   virtual Status CreateDir(const char* dirname) OVERRIDE {
     Status result;
     if (mkdir(dirname, 0755) != 0) {
-      result = IOError(dirname, errno);
+      result = PosixError(dirname, errno);
     }
     return result;
   }
@@ -133,7 +133,7 @@ class PosixEnv : public Env {
     Status result;
     DIR* dir = opendir(dirname);
     if (dir == NULL) {
-      result = IOError(dirname, errno);
+      result = PosixError(dirname, errno);
     } else {
       closedir(dir);
     }
@@ -143,7 +143,7 @@ class PosixEnv : public Env {
   virtual Status DeleteDir(const char* dirname) OVERRIDE {
     Status result;
     if (rmdir(dirname) != 0) {
-      result = IOError(dirname, errno);
+      result = PosixError(dirname, errno);
     }
     return result;
   }
@@ -158,7 +158,7 @@ class PosixEnv : public Env {
     if (stat(fname, &sbuf) == 0) {
       *size = static_cast<uint64_t>(sbuf.st_size);
     } else {
-      s = IOError(fname, errno);
+      s = PosixError(fname, errno);
       *size = 0;
     }
     return s;
@@ -172,11 +172,11 @@ class PosixEnv : public Env {
     int r = -1;
     int w = -1;
     if ((r = open(src, O_RDONLY)) == -1) {
-      status = IOError(src, errno);
+      status = PosixError(src, errno);
     }
     if (status.ok()) {
       if ((w = open(dst, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
-        status = IOError(dst, errno);
+        status = PosixError(dst, errno);
       }
     }
     if (status.ok()) {
@@ -185,13 +185,13 @@ class PosixEnv : public Env {
       while ((n = read(r, buf, 4096)) > 0) {
         ssize_t m = write(w, buf, n);
         if (m != n) {
-          status = IOError(dst, errno);
+          status = PosixError(dst, errno);
           break;
         }
       }
       if (n == -1) {
         if (status.ok()) {
-          status = IOError(src, errno);
+          status = PosixError(src, errno);
         }
       }
     }
@@ -208,7 +208,7 @@ class PosixEnv : public Env {
   virtual Status RenameFile(const char* src, const char* dst) OVERRIDE {
     Status result;
     if (rename(src, dst) != 0) {
-      result = IOError(src, errno);
+      result = PosixError(src, errno);
     }
     return result;
   }
@@ -218,12 +218,12 @@ class PosixEnv : public Env {
     Status s;
     int fd = open(fname, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
-      s = IOError(fname, errno);
+      s = PosixError(fname, errno);
     } else if (!locks_.Insert(fname)) {
       close(fd);
       s = Status::IOError(fname, "Lock already held by process");
     } else if (LockOrUnlock(fd, true) == -1) {
-      s = IOError(fname, errno);
+      s = PosixError(fname, errno);
       close(fd);
       locks_.Remove(fname);
     } else {
@@ -239,7 +239,7 @@ class PosixEnv : public Env {
     Status s;
     PosixFileLock* my_lock = reinterpret_cast<PosixFileLock*>(lock);
     if (LockOrUnlock(my_lock->fd_, false) == -1) {
-      s = IOError("Unlock", errno);
+      s = PosixError("Unlock", errno);
     }
     locks_.Remove(my_lock->name_);
     close(my_lock->fd_);
@@ -248,11 +248,11 @@ class PosixEnv : public Env {
   }
 
   virtual void Schedule(void (*function)(void*), void* arg) OVERRIDE {
-    pool_.Schedule(function, arg);
+    tp_.Schedule(function, arg);
   }
 
   virtual void StartThread(void (*function)(void*), void* arg) OVERRIDE {
-    pool_.StartThread(function, arg);
+    tp_.StartThread(function, arg);
   }
 
   virtual Status GetTestDirectory(std::string* result) OVERRIDE {
@@ -277,14 +277,14 @@ class PosixEnv : public Env {
       return Status::OK();
     } else {
       *result = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
  private:
-  FixedThreadPool pool_;
-  PosixLockTable locks_;
   MmapLimiter mmap_limit_;
+  FixedThreadPool tp_;
+  LockTable locks_;
 };
 
 // A simple Env wrapper that implements all I/O with direct I/O.
@@ -342,7 +342,7 @@ class PosixUnBufferedIOWrapper : public EnvWrapper {
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
@@ -353,7 +353,7 @@ class PosixUnBufferedIOWrapper : public EnvWrapper {
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
@@ -364,7 +364,7 @@ class PosixUnBufferedIOWrapper : public EnvWrapper {
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 };

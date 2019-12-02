@@ -43,14 +43,14 @@ Status PosixIf::Open() {
   Status s;
   fd_ = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);  // Ignore ipv6
   if (fd_ == -1) {
-    s = IOError("socket", errno);
+    s = PosixError("socket", errno);
     return s;
   }
 
   ifconf_.ifc_len = sizeof(ifr_);
   int r = ioctl(fd_, SIOCGIFCONF, &ifconf_);
   if (r == -1) {
-    s = IOError("ioctl", errno);
+    s = PosixError("ioctl", errno);
     ifconf_.ifc_len = 0;
   }
 
@@ -75,7 +75,7 @@ Status FetchHostIPAddrs(std::vector<std::string>* ips) {
 Status FetchHostname(std::string* hostname) {
   char buf[PDLFS_HOST_NAME_MAX];
   if (gethostname(buf, sizeof(buf)) == -1) {
-    return IOError("Cannot get hostname", errno);
+    return PosixError("gethostname", errno);
   } else {
     *hostname = buf;
     return Status::OK();
