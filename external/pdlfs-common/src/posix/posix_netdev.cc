@@ -57,4 +57,29 @@ Status PosixIf::Open() {
   return s;
 }
 
+// Return all associated network addresses.
+Status FetchHostIPAddrs(std::vector<std::string>* ips) {
+  PosixIf sock;
+  std::vector<Ifr> results;
+  Status s = sock.Open();
+  if (s.ok()) {
+    sock.IfConf(&results);
+    for (size_t i = 0; i < results.size(); i++) {
+      ips->push_back(results[i].ip);
+    }
+  }
+  return s;
+}
+
+// Return name of the machine.
+Status FetchHostname(std::string* hostname) {
+  char buf[PDLFS_HOST_NAME_MAX];
+  if (gethostname(buf, sizeof(buf)) == -1) {
+    return IOError("Cannot get hostname", errno);
+  } else {
+    *hostname = buf;
+    return Status::OK();
+  }
+}
+
 }  // namespace pdlfs

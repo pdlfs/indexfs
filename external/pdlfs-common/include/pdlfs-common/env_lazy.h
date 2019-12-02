@@ -192,24 +192,6 @@ class LazyInitEnv : public Env {
     }
   }
 
-  virtual Status FetchHostname(std::string* hostname) {
-    Status s = OpenEnv();
-    if (s.ok()) {
-      return env_->FetchHostname(hostname);
-    } else {
-      return s;
-    }
-  }
-
-  virtual Status FetchHostIPAddrs(std::vector<std::string>* ips) {
-    Status s = OpenEnv();
-    if (s.ok()) {
-      return env_->FetchHostIPAddrs(ips);
-    } else {
-      return s;
-    }
-  }
-
  private:
   // No copying allowed
   void operator=(const LazyInitEnv&);

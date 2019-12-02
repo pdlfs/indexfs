@@ -24,6 +24,12 @@
 #include <sys/stat.h>
 #include <deque>
 
+#if __cplusplus >= 201103L
+#define OVERRIDE override
+#else
+#define OVERRIDE
+#endif
+
 namespace pdlfs {
 
 #if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
@@ -212,7 +218,8 @@ class PosixEnv : public Env {
   explicit PosixEnv(int bg_threads = 1) : pool_(bg_threads) {}
   virtual ~PosixEnv() { abort(); }
 
-  virtual Status NewSequentialFile(const char* fname, SequentialFile** r) {
+  virtual Status NewSequentialFile(  ///
+      const char* fname, SequentialFile** r) OVERRIDE {
     FILE* f = fopen(fname, "r");
     if (f != NULL) {
       *r = new PosixBufferedSequentialFile(fname, f);
@@ -223,7 +230,8 @@ class PosixEnv : public Env {
     }
   }
 
-  virtual Status NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
+  virtual Status NewRandomAccessFile(  ///
+      const char* fname, RandomAccessFile** r) OVERRIDE {
     *r = NULL;
     Status s;
     int fd = open(fname, O_RDONLY);
@@ -254,7 +262,7 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status NewWritableFile(const char* fname, WritableFile** r) {
+  virtual Status NewWritableFile(const char* fname, WritableFile** r) OVERRIDE {
     FILE* f = fopen(fname, "w");
     if (f != NULL) {
       *r = new PosixBufferedWritableFile(fname, f);
@@ -265,12 +273,12 @@ class PosixEnv : public Env {
     }
   }
 
-  virtual bool FileExists(const char* fname) {
+  virtual bool FileExists(const char* fname) OVERRIDE {
     return access(fname, F_OK) == 0;
   }
 
-  virtual Status GetChildren(const char* dirname,
-                             std::vector<std::string>* result) {
+  virtual Status GetChildren(  ///
+      const char* dirname, std::vector<std::string>* result) OVERRIDE {
     result->clear();
     DIR* dir = opendir(dirname);
     if (dir != NULL) {
@@ -285,7 +293,7 @@ class PosixEnv : public Env {
     }
   }
 
-  virtual Status DeleteFile(const char* fname) {
+  virtual Status DeleteFile(const char* fname) OVERRIDE {
     Status result;
     if (unlink(fname) != 0) {
       result = IOError(fname, errno);
@@ -293,7 +301,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status CreateDir(const char* dirname) {
+  virtual Status CreateDir(const char* dirname) OVERRIDE {
     Status result;
     if (mkdir(dirname, 0755) != 0) {
       result = IOError(dirname, errno);
@@ -301,7 +309,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status AttachDir(const char* dirname) {
+  virtual Status AttachDir(const char* dirname) OVERRIDE {
     Status result;
     DIR* dir = opendir(dirname);
     if (dir == NULL) {
@@ -312,7 +320,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status DeleteDir(const char* dirname) {
+  virtual Status DeleteDir(const char* dirname) OVERRIDE {
     Status result;
     if (rmdir(dirname) != 0) {
       result = IOError(dirname, errno);
@@ -320,11 +328,11 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status DetachDir(const char* dirname) {
+  virtual Status DetachDir(const char* dirname) OVERRIDE {
     return Status::NotSupported(Slice());
   }
 
-  virtual Status GetFileSize(const char* fname, uint64_t* size) {
+  virtual Status GetFileSize(const char* fname, uint64_t* size) OVERRIDE {
     Status s;
     struct stat sbuf;
     if (stat(fname, &sbuf) == 0) {
@@ -336,7 +344,7 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status CopyFile(const char* src, const char* dst) {
+  virtual Status CopyFile(const char* src, const char* dst) OVERRIDE {
 #if defined(PDLFS_OS_LINUX) && defined(_GNU_SOURCE)
     return OSCopyFile(src, dst);
 #else
@@ -377,7 +385,7 @@ class PosixEnv : public Env {
 #endif
   }
 
-  virtual Status RenameFile(const char* src, const char* dst) {
+  virtual Status RenameFile(const char* src, const char* dst) OVERRIDE {
     Status result;
     if (rename(src, dst) != 0) {
       result = IOError(src, errno);
@@ -385,7 +393,7 @@ class PosixEnv : public Env {
     return result;
   }
 
-  virtual Status LockFile(const char* fname, FileLock** lock) {
+  virtual Status LockFile(const char* fname, FileLock** lock) OVERRIDE {
     *lock = NULL;
     Status s;
     int fd = open(fname, O_RDWR | O_CREAT, 0644);
@@ -407,7 +415,7 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual Status UnlockFile(FileLock* lock) {
+  virtual Status UnlockFile(FileLock* lock) OVERRIDE {
     Status s;
     PosixFileLock* my_lock = reinterpret_cast<PosixFileLock*>(lock);
     if (LockOrUnlock(my_lock->fd_, false) == -1) {
@@ -419,15 +427,15 @@ class PosixEnv : public Env {
     return s;
   }
 
-  virtual void Schedule(void (*function)(void*), void* arg) {
+  virtual void Schedule(void (*function)(void*), void* arg) OVERRIDE {
     pool_.Schedule(function, arg);
   }
 
-  virtual void StartThread(void (*function)(void*), void* arg) {
+  virtual void StartThread(void (*function)(void*), void* arg) OVERRIDE {
     pool_.StartThread(function, arg);
   }
 
-  virtual Status GetTestDirectory(std::string* result) {
+  virtual Status GetTestDirectory(std::string* result) OVERRIDE {
     const char* env = getenv("TEST_TMPDIR");
     if (env == NULL || env[0] == '\0') {
       char buf[100];
@@ -442,7 +450,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  virtual Status NewLogger(const char* fname, Logger** result) {
+  virtual Status NewLogger(const char* fname, Logger** result) OVERRIDE {
     FILE* f = fopen(fname, "w");
     if (f != NULL) {
       *result = new PosixLogger(f, port::PthreadId);
@@ -451,29 +459,6 @@ class PosixEnv : public Env {
       *result = NULL;
       return IOError(fname, errno);
     }
-  }
-
-  virtual Status FetchHostname(std::string* hostname) {
-    char buf[PDLFS_HOST_NAME_MAX];
-    if (gethostname(buf, sizeof(buf)) == -1) {
-      return IOError("Cannot get hostname", errno);
-    } else {
-      *hostname = buf;
-      return Status::OK();
-    }
-  }
-
-  virtual Status FetchHostIPAddrs(std::vector<std::string>* ips) {
-    PosixIf sock;
-    std::vector<Ifr> results;
-    Status s = sock.Open();
-    if (s.ok()) {
-      sock.IfConf(&results);
-      for (size_t i = 0; i < results.size(); i++) {
-        ips->push_back(results[i].ip);
-      }
-    }
-    return s;
   }
 
  private:

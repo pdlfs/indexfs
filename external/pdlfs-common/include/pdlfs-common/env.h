@@ -172,12 +172,6 @@ class Env {
   // Create and return a log file for storing informational messages.
   virtual Status NewLogger(const char* fname, Logger** result) = 0;
 
-  // Obtain the network name of the local machine.
-  virtual Status FetchHostname(std::string* hostname) = 0;
-
-  // Obtain all the IP addresses bind to the local machine.
-  virtual Status FetchHostIPAddrs(std::vector<std::string>* ips) = 0;
-
  private:
   // No copying allowed
   void operator=(const Env&);
@@ -317,8 +311,14 @@ extern Status WriteStringToFileSync(Env* env, const Slice& data,
 // A utility routine: read contents of named file into *data
 extern Status ReadFileToString(Env* env, const char* fname, std::string* data);
 
+// Returns name of the machine in network.
+extern Status FetchHostname(std::string* hostname);
+
+// Returns all network addresses associated with the local machine.
+extern Status FetchHostIPAddrs(std::vector<std::string>* ips);
+
 // Returns the number of micro-seconds since some fixed point in time.
-// Only useful for computing deltas of time.
+// NOTE: only useful for computing deltas of time.
 extern uint64_t CurrentMicros();
 
 // Sleep/delay the thread for the prescribed number of micro-seconds.
@@ -436,14 +436,6 @@ class EnvWrapper : public Env {
 
   virtual Status NewLogger(const char* fname, Logger** result) {
     return target_->NewLogger(fname, result);
-  }
-
-  virtual Status FetchHostname(std::string* hostname) {
-    return target_->FetchHostname(hostname);
-  }
-
-  virtual Status FetchHostIPAddrs(std::vector<std::string>* ips) {
-    return target_->FetchHostIPAddrs(ips);
   }
 
  private:
