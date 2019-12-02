@@ -16,7 +16,6 @@
  */
 #include "posix_env.h"
 #include "posix_logger.h"
-#include "posix_netdev.h"
 
 #include <dirent.h>
 #include <pthread.h>

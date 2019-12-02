@@ -9,7 +9,7 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "posix_netdev.h"
+#include "posix_net.h"
 #include "posix_env.h"
 
 #include <arpa/inet.h>
