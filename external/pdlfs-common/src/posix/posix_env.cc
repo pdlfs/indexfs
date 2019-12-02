@@ -15,14 +15,15 @@
  * found at https://github.com/google/leveldb.
  */
 #include "posix_env.h"
+#include "posix_bgrun.h"
 #include "posix_fastcopy.h"
 #include "posix_logger.h"
 #include "posix_mmap.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <pthread.h>
 #include <sys/stat.h>
-#include <deque>
 
 #if __cplusplus >= 201103L
 #define OVERRIDE override
@@ -31,69 +32,6 @@
 #endif
 
 namespace pdlfs {
-
-class PosixFixedThreadPool : public ThreadPool {
- public:
-  explicit PosixFixedThreadPool(int max_threads, bool eager_init = false,
-                                void* attr = NULL)
-      : bg_cv_(&mu_),
-        num_pool_threads_(0),
-        max_threads_(max_threads),
-        shutting_down_(false),
-        paused_(false) {
-    if (eager_init) {
-      // Create pool threads immediately
-      MutexLock ml(&mu_);
-      InitPool(attr);
-    }
-  }
-
-  virtual ~PosixFixedThreadPool();
-  virtual void Schedule(void (*function)(void*), void* arg);
-  virtual std::string ToDebugString();
-  virtual void Resume();
-  virtual void Pause();
-
-  void StartThread(void (*function)(void*), void* arg);
-  void InitPool(void* attr);
-
- private:
-  // BGThread() is the body of the background thread
-  void BGThread();
-
-  static void* BGWrapper(void* arg) {
-    reinterpret_cast<PosixFixedThreadPool*>(arg)->BGThread();
-    return NULL;
-  }
-
-  port::Mutex mu_;
-  port::CondVar bg_cv_;
-  int num_pool_threads_;
-  int max_threads_;
-
-  bool shutting_down_;
-  bool paused_;
-
-  // Entry per Schedule() call
-  struct BGItem {
-    void* arg;
-    void (*function)(void*);
-  };
-  typedef std::deque<BGItem> BGQueue;
-  BGQueue queue_;
-
-  struct StartThreadState {
-    void (*user_function)(void*);
-    void* arg;
-  };
-
-  static void* StartThreadWrapper(void* arg) {
-    StartThreadState* state = reinterpret_cast<StartThreadState*>(arg);
-    state->user_function(state->arg);
-    delete state;
-    return NULL;
-  }
-};
 
 class PosixEnv : public Env {
  public:
@@ -344,7 +282,7 @@ class PosixEnv : public Env {
   }
 
  private:
-  PosixFixedThreadPool pool_;
+  FixedThreadPool pool_;
   PosixLockTable locks_;
   MmapLimiter mmap_limit_;
 };
@@ -451,105 +389,6 @@ class PosixDevNullWrapper : public EnvWrapper {
   }
 };
 #endif
-
-static pthread_t Pthread(void* (*func)(void*), void* arg, void* attr) {
-  pthread_t th;
-  pthread_attr_t* ta = reinterpret_cast<pthread_attr_t*>(attr);
-  port::PthreadCall("pthread_create", pthread_create(&th, ta, func, arg));
-  port::PthreadCall("pthread_detach", pthread_detach(th));
-  return th;
-}
-
-std::string PosixFixedThreadPool::ToDebugString() {
-  char tmp[100];
-  snprintf(tmp, sizeof(tmp), "POSIX fixed thread pool: num_threads=%d",
-           max_threads_);
-  return tmp;
-}
-
-PosixFixedThreadPool::~PosixFixedThreadPool() {
-  mu_.Lock();
-  shutting_down_ = true;
-  bg_cv_.SignalAll();
-  while (num_pool_threads_ != 0) {
-    bg_cv_.Wait();
-  }
-  mu_.Unlock();
-}
-
-void PosixFixedThreadPool::InitPool(void* attr) {
-  mu_.AssertHeld();
-  while (num_pool_threads_ < max_threads_) {
-    num_pool_threads_++;
-    Pthread(BGWrapper, this, attr);
-  }
-}
-
-void PosixFixedThreadPool::Schedule(void (*function)(void*), void* arg) {
-  MutexLock ml(&mu_);
-  if (shutting_down_) return;
-  InitPool(NULL);  // Start background threads if necessary
-
-  // If the queue is currently empty, the background threads
-  // may be waiting.
-  if (queue_.empty()) bg_cv_.SignalAll();
-
-  // Add to priority queue
-  queue_.push_back(BGItem());
-  queue_.back().function = function;
-  queue_.back().arg = arg;
-}
-
-void PosixFixedThreadPool::BGThread() {
-  void (*function)(void*) = NULL;
-  void* arg;
-
-  while (true) {
-    {
-      MutexLock l(&mu_);
-      // Wait until there is an item that is ready to run
-      while (!shutting_down_ && (paused_ || queue_.empty())) {
-        bg_cv_.Wait();
-      }
-      if (shutting_down_) {
-        assert(num_pool_threads_ > 0);
-        num_pool_threads_--;
-        bg_cv_.SignalAll();
-        return;
-      }
-
-      assert(!queue_.empty());
-      function = queue_.front().function;
-      arg = queue_.front().arg;
-      queue_.pop_front();
-    }
-
-    assert(function != NULL);
-    function(arg);
-  }
-}
-
-void PosixFixedThreadPool::Resume() {
-  MutexLock ml(&mu_);
-  paused_ = false;
-  bg_cv_.SignalAll();
-}
-
-void PosixFixedThreadPool::Pause() {
-  MutexLock ml(&mu_);
-  paused_ = true;
-}
-
-void PosixFixedThreadPool::StartThread(void (*function)(void*), void* arg) {
-  StartThreadState* state = new StartThreadState;
-  state->user_function = function;
-  state->arg = arg;
-  Pthread(StartThreadWrapper, state, NULL);
-}
-
-ThreadPool* ThreadPool::NewFixed(int num_threads, bool eager_init, void* attr) {
-  return new PosixFixedThreadPool(num_threads, eager_init, attr);
-}
 
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
