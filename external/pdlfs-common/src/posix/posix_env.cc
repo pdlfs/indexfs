@@ -16,6 +16,7 @@
  */
 #include "posix_env.h"
 #include "posix_bgrun.h"
+#include "posix_filecopy.h"
 #include "posix_fastcopy.h"
 #include "posix_logger.h"
 #include "posix_mmap.h"
@@ -168,40 +169,7 @@ class PosixEnv : public Env {
 #if defined(PDLFS_OS_LINUX)
     return FastCopy(src, dst);
 #else
-    Status status;
-    int r = -1;
-    int w = -1;
-    if ((r = open(src, O_RDONLY)) == -1) {
-      status = PosixError(src, errno);
-    }
-    if (status.ok()) {
-      if ((w = open(dst, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
-        status = PosixError(dst, errno);
-      }
-    }
-    if (status.ok()) {
-      ssize_t n;
-      char buf[4096];
-      while ((n = read(r, buf, 4096)) > 0) {
-        ssize_t m = write(w, buf, n);
-        if (m != n) {
-          status = PosixError(dst, errno);
-          break;
-        }
-      }
-      if (n == -1) {
-        if (status.ok()) {
-          status = PosixError(src, errno);
-        }
-      }
-    }
-    if (r != -1) {
-      close(r);
-    }
-    if (w != -1) {
-      close(w);
-    }
-    return status;
+    return Copy(src, dst);
 #endif
   }
 
