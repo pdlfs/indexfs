@@ -84,14 +84,14 @@ class LockTable {
 
 class PosixBufferedSequentialFile : public SequentialFile {
  private:
-  std::string filename_;
-  FILE* file_;
+  const std::string filename_;
+  FILE* const file_;
 
  public:
   PosixBufferedSequentialFile(const char* fname, FILE* f)
       : filename_(fname), file_(f) {}
 
-  virtual ~PosixBufferedSequentialFile() { fclose(file_); }
+  virtual ~PosixBufferedSequentialFile();
 
   virtual Status Read(size_t n, Slice* result, char* scratch) {
     Status s;
@@ -99,7 +99,7 @@ class PosixBufferedSequentialFile : public SequentialFile {
     *result = Slice(scratch, r);
     if (r < n) {
       if (feof(file_)) {
-        // We leave status as ok if we hit the end of the file
+        // Leave status as ok if we hit eof
       } else {
         // A partial read with an error: return a non-ok status
         s = PosixError(filename_, errno);
@@ -118,13 +118,13 @@ class PosixBufferedSequentialFile : public SequentialFile {
 
 class PosixSequentialFile : public SequentialFile {
  private:
-  std::string filename_;
-  int fd_;
+  const std::string filename_;
+  const int fd_;
 
  public:
   PosixSequentialFile(const char* fname, int fd) : filename_(fname), fd_(fd) {}
 
-  virtual ~PosixSequentialFile() { close(fd_); }
+  virtual ~PosixSequentialFile();
 
   virtual Status Read(size_t n, Slice* result, char* scratch) {
     Status s;
@@ -152,23 +152,25 @@ class PosixSequentialFile : public SequentialFile {
 
 class PosixRandomAccessFile : public RandomAccessFile {
  private:
-  std::string filename_;
-  int fd_;
+  const std::string filename_;
+  const int fd_;
 
  public:
   PosixRandomAccessFile(const char* fname, int fd)
       : filename_(fname), fd_(fd) {}
 
-  virtual ~PosixRandomAccessFile() { close(fd_); }
+  virtual ~PosixRandomAccessFile();
 
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const {
     Status s;
     ssize_t r = pread(fd_, scratch, n, static_cast<off_t>(offset));
-    *result = Slice(scratch, static_cast<size_t>(r < 0 ? 0 : r));
     if (r < 0) {
       // An error: return a non-ok status
       s = PosixError(filename_, errno);
+      *result = Slice();
+    } else {
+      *result = Slice(scratch, r);
     }
     return s;
   }

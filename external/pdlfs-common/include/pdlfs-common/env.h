@@ -26,10 +26,10 @@
 
 namespace pdlfs {
 
-// An Env is an interface used by high-level file/data systems to access
-// operating system functionalities such as the file system.  Callers
-// may wish to provide a custom Env object when opening a database to
-// get fine gain control; e.g., to rate limit file system operations.
+// An Env is a portable interface for os services such as file io and thread
+// scheduling. Callers may implement custom Env objects to port to non-standard
+// file or storage systems (e.g., hdfs, pvfs, rados), or to insert additional
+// functions; e.g., to rate limit file operations.
 //
 // All Env implementations should be safe for concurrent access from
 // multiple threads without any external synchronization.
@@ -46,18 +46,37 @@ class Env {
   Env() {}
   virtual ~Env();
 
-  // Load a specific environment implementation as is requested by the caller.
-  // If the implementation is not available, NULL is returned.
-  // Set *is_system to true iff the returned Env belongs to system and
-  // must not be deleted.  Otherwise, the result should be
-  // deleted when it is no longer needed.
+  // Open a specific environment implementation as is requested by the caller.
+  // If the implementation is not available, NULL is returned. Set *is_system to
+  // true iff the returned Env belongs to system and must not be deleted.
+  // Else, the result should be deleted when it is no longer needed.
   static Env* Open(const char* env_name, const char* env_conf, bool* is_system);
 
-  // Return a default environment suitable for the current operating
-  // system.  Sophisticated users may wish to provide their own Env
-  // implementation instead of relying on this default environment.
-  //
-  // The result of Default() belongs to system and cannot be deleted.
+  // Return a new Env wrapper object redirecting all SequentialFile and
+  // WritableFile operations (i.e., sequential reading and writing) to libc
+  // buffered io utilities such as fopen(), fread(), fwrite(), fflush(),
+  // fseek(), and fclose(). RandomAccessFile operations (random reads) remain
+  // unbuffered at the user level (os may still choose to buffer data in a
+  // system-wide page cache). Result of this call belongs to the caller and
+  // should be deleted after use.
+  static Env* NewBufferedIoEnvWrapper(Env* base);
+
+  // Return a new Env wrapper object implementing random reads (as defined in
+  // RandomAccessFile) using mmapped files. Sequential io (as defined in
+  // SequentialFile and WritableFile) is kept unchanged under this wrapper.
+  // Result of this call belongs to the caller and should be deleted after use.
+  static Env* NewMmapIoEnvWrapper(Env* base);
+
+  // Return an Env implementation that performs sequential io using standard os
+  // io calls such as open(), read(), write(), lseek(), fsync(), and
+  // close(), and random reads using pread(). Result of this call belongs to the
+  // system and should never be deleted.
+  static Env* GetUnBufferedIoEnv();
+
+  // Return a default Env implementation suitable for common use. Sophisticated
+  // users may wish to provide and compose their own Env implementations instead
+  // of relying on this default environment. Result of this call belongs to the
+  // system and should never be deleted.
   static Env* Default();
 
   // Create a brand new sequentially-readable file with the specified name.

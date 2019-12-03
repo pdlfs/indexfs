@@ -16,8 +16,8 @@
  */
 #include "posix_env.h"
 #include "posix_bgrun.h"
-#include "posix_filecopy.h"
 #include "posix_fastcopy.h"
+#include "posix_filecopy.h"
 #include "posix_logger.h"
 #include "posix_mmap.h"
 
@@ -34,16 +34,33 @@
 
 namespace pdlfs {
 
+PosixRandomAccessFile::~PosixRandomAccessFile() { close(fd_); }
+
+PosixBufferedSequentialFile::~PosixBufferedSequentialFile() { fclose(file_); }
+
+PosixSequentialFile::~PosixSequentialFile() { close(fd_); }
+
 class PosixEnv : public Env {
  public:
-  explicit PosixEnv(int bg_threads = 1) : tp_(bg_threads) {}
-  virtual ~PosixEnv() { abort(); }
+  explicit PosixEnv(int bg_threads = 1) : tpool_(bg_threads) {}
+  virtual ~PosixEnv() {}
+
+  virtual Status NewWritableFile(const char* fname, WritableFile** r) OVERRIDE {
+    int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd != -1) {
+      *r = new PosixWritableFile(fname, fd);
+      return Status::OK();
+    } else {
+      *r = NULL;
+      return PosixError(fname, errno);
+    }
+  }
 
   virtual Status NewSequentialFile(  ///
       const char* fname, SequentialFile** r) OVERRIDE {
-    FILE* f = fopen(fname, "r");
-    if (f != NULL) {
-      *r = new PosixBufferedSequentialFile(fname, f);
+    int fd = open(fname, O_RDONLY);
+    if (fd != -1) {
+      *r = new PosixSequentialFile(fname, fd);
       return Status::OK();
     } else {
       *r = NULL;
@@ -53,40 +70,9 @@ class PosixEnv : public Env {
 
   virtual Status NewRandomAccessFile(  ///
       const char* fname, RandomAccessFile** r) OVERRIDE {
-    *r = NULL;
-    Status s;
     int fd = open(fname, O_RDONLY);
-    if (fd < 0) {
-      s = PosixError(fname, errno);
-    } else if (!mmap_limit_.Acquire()) {
+    if (fd != -1) {
       *r = new PosixRandomAccessFile(fname, fd);
-    } else {
-      uint64_t size;
-      s = GetFileSize(fname, &size);
-      if (s.ok()) {
-        if (size != 0) {
-          void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-          if (base != MAP_FAILED) {
-            *r = new PosixMmapReadableFile(fname, base, size, &mmap_limit_);
-          } else {
-            s = PosixError(fname, errno);
-          }
-        } else {
-          *r = new PosixEmptyFile();
-        }
-      }
-      close(fd);
-      if (!s.ok()) {
-        mmap_limit_.Release();
-      }
-    }
-    return s;
-  }
-
-  virtual Status NewWritableFile(const char* fname, WritableFile** r) OVERRIDE {
-    FILE* f = fopen(fname, "w");
-    if (f != NULL) {
-      *r = new PosixBufferedWritableFile(fname, f);
       return Status::OK();
     } else {
       *r = NULL;
@@ -207,7 +193,7 @@ class PosixEnv : public Env {
     Status s;
     PosixFileLock* my_lock = reinterpret_cast<PosixFileLock*>(lock);
     if (LockOrUnlock(my_lock->fd_, false) == -1) {
-      s = PosixError("Unlock", errno);
+      s = PosixError(my_lock->name_, errno);
     }
     locks_.Remove(my_lock->name_);
     close(my_lock->fd_);
@@ -216,11 +202,11 @@ class PosixEnv : public Env {
   }
 
   virtual void Schedule(void (*function)(void*), void* arg) OVERRIDE {
-    tp_.Schedule(function, arg);
+    tpool_.Schedule(function, arg);
   }
 
   virtual void StartThread(void (*function)(void*), void* arg) OVERRIDE {
-    tp_.StartThread(function, arg);
+    tpool_.StartThread(function, arg);
   }
 
   virtual Status GetTestDirectory(std::string* result) OVERRIDE {
@@ -250,158 +236,109 @@ class PosixEnv : public Env {
   }
 
  private:
-  MmapLimiter mmap_limit_;
-  FixedThreadPool tp_;
+  FixedThreadPool tpool_;
   LockTable locks_;
 };
 
-// A simple Env wrapper that implements all I/O with direct I/O.
-// Currently only enabled on Linux.
-#if defined(PDLFS_OS_LINUX)
-class PosixDirectIOWrapper : public EnvWrapper {
+class PosixLibcBufferedIoEnvWrapper : public EnvWrapper {
  public:
-  explicit PosixDirectIOWrapper(Env* base) : EnvWrapper(base) {}
-  virtual ~PosixDirectIOWrapper() { abort(); }
+  explicit PosixLibcBufferedIoEnvWrapper(Env* base) : EnvWrapper(base) {}
+  virtual ~PosixLibcBufferedIoEnvWrapper() {}
 
-  virtual Status NewWritableFile(const char* fname, WritableFile** r) {
-    int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC | O_DIRECT, 0644);
-    if (fd != -1) {
-      *r = new PosixWritableFile(fname, fd);
+  virtual Status NewWritableFile(const char* fname, WritableFile** r) OVERRIDE {
+    FILE* f = fopen(fname, "w");
+    if (f != NULL) {
+      *r = new PosixBufferedWritableFile(fname, f);
       return Status::OK();
     } else {
       *r = NULL;
-      return IOError(fname, errno);
+      return PosixError(fname, errno);
     }
   }
 
-  virtual Status NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
+  virtual Status NewSequentialFile(  ///
+      const char* fname, SequentialFile** r) OVERRIDE {
+    FILE* f = fopen(fname, "r");
+    if (f != NULL) {
+      *r = new PosixBufferedSequentialFile(fname, f);
+      return Status::OK();
+    } else {
+      *r = NULL;
+      return PosixError(fname, errno);
+    }
+  }
+};
+
+class PosixMmapIoEnvWrapper : public EnvWrapper {
+ public:
+  explicit PosixMmapIoEnvWrapper(Env* base) : EnvWrapper(base) {}
+  virtual ~PosixMmapIoEnvWrapper() {}
+
+  virtual Status NewRandomAccessFile(  ///
+      const char* fname, RandomAccessFile** r) OVERRIDE {
+    *r = NULL;
+    Status s;
     int fd = open(fname, O_RDONLY);
-    if (fd != -1) {
+    if (fd < 0) {
+      s = PosixError(fname, errno);
+    } else if (!mmap_limit_.Acquire()) {
       *r = new PosixRandomAccessFile(fname, fd);
-      return Status::OK();
     } else {
-      *r = NULL;
-      return IOError(fname, errno);
+      uint64_t size;
+      s = target()->GetFileSize(fname, &size);
+      if (s.ok()) {
+        if (size != 0) {
+          void* base = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+          if (base != MAP_FAILED) {
+            *r = new PosixMmapReadableFile(fname, base, size, &mmap_limit_);
+          } else {
+            s = PosixError(fname, errno);
+          }
+        } else {
+          *r = new PosixEmptyFile();
+        }
+      }
+      close(fd);
+      if (!s.ok()) {
+        mmap_limit_.Release();
+      }
     }
+    return s;
   }
 
-  virtual Status NewSequentialFile(const char* fname, SequentialFile** r) {
-    int fd = open(fname, O_RDONLY);
-    if (fd != -1) {
-      *r = new PosixSequentialFile(fname, fd);
-      return Status::OK();
-    } else {
-      *r = NULL;
-      return IOError(fname, errno);
-    }
-  }
-};
-#endif
-
-class PosixUnBufferedIOWrapper : public EnvWrapper {
- public:
-  explicit PosixUnBufferedIOWrapper(Env* base) : EnvWrapper(base) {}
-  virtual ~PosixUnBufferedIOWrapper() { abort(); }
-
-  virtual Status NewWritableFile(const char* fname, WritableFile** r) {
-    int fd = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (fd != -1) {
-      *r = new PosixWritableFile(fname, fd);
-      return Status::OK();
-    } else {
-      *r = NULL;
-      return PosixError(fname, errno);
-    }
-  }
-
-  virtual Status NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
-    int fd = open(fname, O_RDONLY);
-    if (fd != -1) {
-      *r = new PosixRandomAccessFile(fname, fd);
-      return Status::OK();
-    } else {
-      *r = NULL;
-      return PosixError(fname, errno);
-    }
-  }
-
-  virtual Status NewSequentialFile(const char* fname, SequentialFile** r) {
-    int fd = open(fname, O_RDONLY);
-    if (fd != -1) {
-      *r = new PosixSequentialFile(fname, fd);
-      return Status::OK();
-    } else {
-      *r = NULL;
-      return PosixError(fname, errno);
-    }
-  }
+ private:
+  MmapLimiter mmap_limit_;
 };
 
-// A simple Env wrapper that redirects all I/O to dev null.
-#if defined(PDLFS_OS_LINUX)
-class PosixDevNullWrapper : public EnvWrapper {
- public:
-  explicit PosixDevNullWrapper(Env* base) : EnvWrapper(base) {}
-  virtual ~PosixDevNullWrapper() { abort(); }
+Env* Env::NewBufferedIoEnvWrapper(Env* const base) {
+  return new PosixLibcBufferedIoEnvWrapper(base);
+}
 
-  virtual Status NewWritableFile(const char* fname, WritableFile** r) {
-    return target()->NewWritableFile("/dev/null", r);
-  }
-
-  virtual Status NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
-    return target()->NewRandomAccessFile("/dev/null", r);
-  }
-
-  virtual Status NewSequentialFile(const char* fname, SequentialFile** r) {
-    return target()->NewSequentialFile("/dev/null", r);
-  }
-};
-#endif
+Env* Env::NewMmapIoEnvWrapper(Env* const base) {
+  return new PosixMmapIoEnvWrapper(base);
+}
 
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
-static Env* posix_nullio;
-static Env* posix_dio;
-static Env* posix_unbufio;
+static Env* posix_env_wrapped;
 static Env* posix_env;
 
-static void InitPosixEnvs() {
-  Env* base = new PosixEnv;
-  posix_unbufio = new PosixUnBufferedIOWrapper(base);
-#if defined(PDLFS_OS_LINUX)
-  posix_nullio = new PosixDevNullWrapper(base);
-#else
-  posix_nullio = NULL;
-#endif
-#if defined(PDLFS_OS_LINUX)
-  posix_dio = new PosixDirectIOWrapper(base);
-#else
-  posix_dio = NULL;
-#endif
+static void InitEnvs() {
+  Env* const base = new PosixEnv;
+  posix_env_wrapped =
+      new PosixMmapIoEnvWrapper(new PosixLibcBufferedIoEnvWrapper(base));
   posix_env = base;
 }
 
-namespace port {
-Env* PosixGetDevNullEnv() {
-  pthread_once(&once, &InitPosixEnvs);
-  return posix_nullio;
-}
-
-Env* PosixGetDefaultEnv() {
-  pthread_once(&once, &InitPosixEnvs);
+static Env* PosixGetUnBufferedIoEnv() {
+  port::PthreadCall("pthread_once", pthread_once(&once, InitEnvs));
   return posix_env;
 }
 
-Env* PosixGetUnBufferedIOEnv() {
-  pthread_once(&once, &InitPosixEnvs);
-  return posix_unbufio;
+static Env* PosixGetDefaultEnv() {
+  port::PthreadCall("pthread_once", pthread_once(&once, InitEnvs));
+  return posix_env_wrapped;
 }
-
-Env* PosixGetDirectIOEnv() {
-  pthread_once(&once, &InitPosixEnvs);
-  return posix_dio;
-}
-}  // namespace port
 
 // Return the current time in microseconds.
 uint64_t CurrentMicros() {
@@ -428,15 +365,18 @@ Status PosixError(const Slice& err_context, int err_number) {
   }
 }
 
-// Return the default posix env.
-Env* Env::Default() {
-#if !defined(PDLFS_PLATFORM_POSIX)
-#error "Compiling posix code on a non-posix platform!?"
-#else
-  Env* result = port::PosixGetDefaultEnv();
-  assert(result != NULL);
+// Return the base Env implemented using the standard os io calls.
+// The returned result belongs to the system.
+Env* Env::GetUnBufferedIoEnv() {
+  Env* result = PosixGetUnBufferedIoEnv();
   return result;
-#endif
+}
+
+// Return the default Env for common use.
+// The returned result belongs to the system.
+Env* Env::Default() {
+  Env* result = PosixGetDefaultEnv();
+  return result;
 }
 
 }  // namespace pdlfs
