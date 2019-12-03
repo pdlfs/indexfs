@@ -30,18 +30,8 @@
 
 namespace pdlfs {
 
-inline Status PosixError(const Slice& err_context, int err_number) {
-  switch (err_number) {
-    case EEXIST:
-      return Status::AlreadyExists(err_context);
-    case ENOENT:
-      return Status::NotFound(err_context);
-    case EACCES:
-      return Status::AccessDenied(err_context);
-    default:
-      return Status::IOError(err_context, strerror(err_number));
-  }
-}
+// Return errors as status objects.
+extern Status PosixError(const Slice& err_context, int err_number);
 
 inline int LockOrUnlock(int fd, bool lock) {
   errno = 0;

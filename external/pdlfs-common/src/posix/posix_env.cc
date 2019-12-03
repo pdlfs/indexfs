@@ -448,6 +448,18 @@ uint64_t CurrentMicros() {
 // We may sleep a bit longer than the specified amount.
 void SleepForMicroseconds(int micros) { usleep(static_cast<unsigned>(micros)); }
 
+// Map integer errors to status objects.
+Status PosixError(const Slice& err_context, int err_number) {
+  switch (err_number) {
+    case EEXIST:
+      return Status::AlreadyExists(err_context);
+    case ENOENT:
+      return Status::NotFound(err_context);
+    default:
+      return Status::IOError(err_context, strerror(err_number));
+  }
+}
+
 // Return the default posix env.
 Env* Env::Default() {
 #if !defined(PDLFS_PLATFORM_POSIX)

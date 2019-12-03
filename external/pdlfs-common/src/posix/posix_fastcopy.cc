@@ -22,17 +22,17 @@ Status FastCopy(const char* src, const char* dst) {
   int r = -1;
   int w = -1;
   if ((r = open(src, O_RDONLY)) == -1) {
-    status = IOError(src, errno);
+    status = PosixError(src, errno);
   }
   if (status.ok()) {
     if ((w = open(dst, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
-      status = IOError(dst, errno);
+      status = PosixError(dst, errno);
     }
   }
   if (status.ok()) {
     int p[2];
     if (pipe(p) == -1) {
-      status = IOError("pipe", errno);
+      status = PosixError("pipe", errno);
     } else {
       const size_t batch_size = 4096;
       while (splice(p[0], 0, w, 0, splice(r, 0, p[1], 0, batch_size, 0), 0) > 0)
