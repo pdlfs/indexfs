@@ -31,7 +31,7 @@ set (pdlfs-common-srcs arena.cc cache.cc coding.cc crc32c/crc32c.cc
      port_posix.cc posix/posix_bgrun.cc posix/posix_filecopy.cc
      posix/posix_env.cc posix/posix_fastcopy.cc posix/posix_logger.cc
      posix/posix_mmap.cc posix/posix_net.cc
-     random.cc slice.cc spooky.cc spooky_impl.cc
+     random.cc slice.cc spooky.cc spooky/spooky_v2.cc
      status.cc strutil.cc testharness.cc testutil.cc
      xxhash/xxhash.c xxhash.cc)
 set (pdlfs-common-tests arena_test.cc cache_test.cc coding_test.cc
