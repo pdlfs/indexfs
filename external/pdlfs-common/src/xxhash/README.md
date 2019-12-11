@@ -3,6 +3,8 @@
 xxHash - Extremely fast hash algorithm
 ======================================
 
+This is xxHash v0.6.5.
+
 xxHash is an Extremely fast Hash algorithm developed by Yann Collet, capable of running at RAM speed limits.
 It successfully completes the [SMHasher](http://code.google.com/p/smhasher/wiki/SMHasher) test suite
 which evaluates collision, dispersion and randomness qualities of hash functions.
@@ -10,7 +12,7 @@ Code is highly portable, and hashes are identical on all platforms (little / big
 
 ### License
 
-The library files `xxhash_impl.cc` and `xxhash_impl.h` are BSD licensed under Yann Collet.
+The library files `xxhash.c` and `xxhash.h` are BSD licensed under Yann Collet.
 
 Benchmarks
 -------------------------
