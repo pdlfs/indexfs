@@ -1,11 +1,11 @@
-**This file is copied and modified from SpookyHash's [home](https://burtleburtle.net/bob/hash/spooky.html) page.**
+**This readme file is copied and reformatted from SpookyHash's [home](https://burtleburtle.net/bob/hash/spooky.html) page.**
 
 SpookyHash: a 128-bit noncryptographic hash
 ===========================================
 
 SpookyHash is a public domain noncryptographic hash function producing well-distributed 128-bit hash values for byte arrays of any length. It can produce 64-bit and 32-bit hash values too, at the same speed, just use the bottom n bits.
 
-This C++ implementation (V2) is specific to 64-bit x86 platforms, in particular it assumes the processor is little endian. Long keys hash in 3 bytes per cycle, short keys take about 1 byte per cycle, and there is a 30 cycle startup cost. Keys can be supplied in fragments. The function allows a 128-bit seed. It's named SpookyHash because it was released on Halloween.
+This C++ implementation (`SpookyV2.h` and `SpookyV2.cpp`) is specific to 64-bit x86 platforms, in particular it assumes the processor is little endian. Long keys hash in 3 bytes per cycle, short keys take about 1 byte per cycle, and there is a 30 cycle startup cost. Keys can be supplied in fragments. The function allows a 128-bit seed. It's named SpookyHash because it was released on Halloween.
 
 Why use SpookyHash?
 -------------------
@@ -20,11 +20,7 @@ Why use SpookyHash?
 Notes
 -----
 
-For long keys, the inner loop of SpookyHash is Spooky::Mix(). It consumes an 8-byte input, then does an xor, another xor, a rotation, and an addition. The internal state won't entirely fit in registers after 3 or 4 8-byte variables. But parallelism keeps increasing, and so does avalanche per pass. There was a sweet spot around 12 variables.
-
-I tried SSE2 instructions, and 64-bit multiplications, but it turned out that plain 64-bit rotate, addition, and XOR got results faster than those. I thought 4 or 6 variable schemes were going to win, but 12 variables won in the end. My boss suggests I look into GPUs. I haven't tried that yet. But given that the memory bandwidth is maxed out, I doubt they would help.
-
-While Spooky::Mix() handles the middle of long keys well, it would need 4 repetitions for the final mix, and it has a huge startup cost. That would make short keys expensive. So I found the ShortHash to produce a 128-bit hash of short keys with little startup cost, and Spooky::End() to reduce the final mixing cost (this shows up most for keys just over 192 bytes long). Those components aren't trickle-feed, they work the old way. ShortHash is used automatically for short keys.
-
-I have not tried the CRC32 instruction that started in the Nehalem Intel chips, because I don't have one. Google has, with CityHash. They claim 6 bytes per cycle, which is faster than any hash I've seen. On my machine CityHash about half the speed of SpookyHash; mine doesn't have a CRC32 instruction. CityHash passes my frog test for at least 272 keypairs.
-
+* For long keys, the inner loop of SpookyHash is Spooky::Mix(). It consumes an 8-byte input, then does an xor, another xor, a rotation, and an addition. The internal state won't entirely fit in registers after 3 or 4 8-byte variables. But parallelism keeps increasing, and so does avalanche per pass. There was a sweet spot around 12 variables.
+* I tried SSE2 instructions, and 64-bit multiplications, but it turned out that plain 64-bit rotate, addition, and XOR got results faster than those. I thought 4 or 6 variable schemes were going to win, but 12 variables won in the end. My boss suggests I look into GPUs. I haven't tried that yet. But given that the memory bandwidth is maxed out, I doubt they would help.
+* While Spooky::Mix() handles the middle of long keys well, it would need 4 repetitions for the final mix, and it has a huge startup cost. That would make short keys expensive. So I found the ShortHash to produce a 128-bit hash of short keys with little startup cost, and Spooky::End() to reduce the final mixing cost (this shows up most for keys just over 192 bytes long). Those components aren't trickle-feed, they work the old way. ShortHash is used automatically for short keys.
+* I have not tried the CRC32 instruction that started in the Nehalem Intel chips, because I don't have one. Google has, with CityHash. They claim 6 bytes per cycle, which is faster than any hash I've seen. On my machine CityHash about half the speed of SpookyHash; mine doesn't have a CRC32 instruction. CityHash passes my frog test for at least 272 keypairs.
