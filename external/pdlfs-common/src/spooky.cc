@@ -10,6 +10,7 @@
  */
 #include "pdlfs-common/spooky.h"
 #include "spooky/SpookyV2.h"
+
 #include <string.h>
 
 namespace pdlfs {
