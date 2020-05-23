@@ -1,5 +1,6 @@
 **Scalable file system metadata partitioning over multiple machines.**
 
+[![Build Status](https://travis-ci.org/pdlfs/indexfs.svg?branch=master)](https://travis-ci.org/pdlfs/indexfs)
 [![License](https://img.shields.io/badge/license-New%20BSD-blue.svg)](LICENSE.txt)
 
 IndexFS by DeltaFS
