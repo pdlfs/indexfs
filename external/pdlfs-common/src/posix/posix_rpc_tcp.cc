@@ -106,7 +106,7 @@ Status PosixTCPServer::BGLoop(int myid) {
 }
 
 void PosixTCPServer::HandleIncomingCall(CallState* const call) {
-  int err;
+  int err = 0;
   rpc::If::Message in, out;
   const uint64_t start = CurrentMicros();
   struct pollfd po;
