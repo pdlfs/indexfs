@@ -41,7 +41,7 @@ class PosixUDPServer : public PosixSocketServer {
     char msg[1];
   };
   CallState* CreateCallState();
-  void HandleIncomingCall(CallState** call);
+  void HandleIncomingCall(CallState** call);  // May send call to bg worker pool
   void ProcessCall(CallState* call);
   static void ProcessCallWrapper(void* arg);
   virtual Status BGLoop(int myid);
