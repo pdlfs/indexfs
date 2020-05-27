@@ -19,8 +19,8 @@
 
 namespace pdlfs {
 
-PosixUDPServer::PosixUDPServer(rpc::If* srv, size_t max_msgsz)
-    : max_msgsz_(max_msgsz), srv_(srv) {}
+PosixUDPServer::PosixUDPServer(const RPCOptions& options, size_t max_msgsz)
+    : PosixSocketServer(options), max_msgsz_(max_msgsz) {}
 
 Status PosixUDPServer::OpenAndBind(const std::string& uri) {
   MutexLock ml(&mutex_);
@@ -101,7 +101,7 @@ Status PosixUDPServer::BGLoop(int myid) {
 void PosixUDPServer::HandleIncomingCall(CallState* const call) {
   rpc::If::Message in, out;
   in.contents = Slice(call->msg, call->msgsz);
-  srv_->Call(in, out);
+  options_.fs->Call(in, out);
   ssize_t nbytes =
       sendto(fd_, out.contents.data(), out.contents.size(), 0,
              reinterpret_cast<struct sockaddr*>(&call->addr), call->addrlen);
