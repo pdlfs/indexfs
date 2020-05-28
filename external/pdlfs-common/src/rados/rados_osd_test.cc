@@ -52,6 +52,7 @@ class RadosOsdTest {
 };
 
 TEST(RadosOsdTest, PutAndExists) {
+  Open();
   const char* name = "a";
   osd_->Delete(name);
   ASSERT_OK(osd_->Put(name, Slice()));
@@ -61,6 +62,7 @@ TEST(RadosOsdTest, PutAndExists) {
 }
 
 TEST(RadosOsdTest, ReadWrite) {
+  Open();
   const char* name = "a";
   const char* data = "xxxxxxxyyyyzz";
   osd_->Delete(name);
@@ -75,6 +77,7 @@ TEST(RadosOsdTest, ReadWrite) {
 }
 
 TEST(RadosOsdTest, PutGetCopy) {
+  Open();
   const char* src = "a";
   const char* dst = "b";
   const char* data = "xxxxxxxyyyyzz";
