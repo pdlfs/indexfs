@@ -92,7 +92,7 @@ endif ()
 if (TARGET rados AND PDLFS_RADOS)
     set (pdlfs-rados-srcs rados_comm.cc rados_connmgr.cc
             rados_env.cc rados_osd.cc)
-    set (pdlfs-rados-tests)
+    set (pdlfs-rados-tests rados_connmgr_test.cc)
 endif ()
 
 
