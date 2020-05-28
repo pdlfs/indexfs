@@ -53,17 +53,18 @@ void ParseArgs(int argc, char* argv[]) {
     ::pdlfs::Slice a = argv[i];
     if (a.starts_with("--cluster=")) {
       FLAGS_rados_cluster_name = argv[i] + strlen("--cluster=");
-      fprintf(stderr, "set cluster: %s\n", FLAGS_rados_cluster_name);
     } else if (a.starts_with("--user=")) {
       FLAGS_user_name = argv[i] + strlen("--user=");
-      fprintf(stderr, "set user: %s\n", FLAGS_user_name);
     } else if (a.starts_with("--conf=")) {
       FLAGS_conf = argv[i] + strlen("--conf=");
-      fprintf(stderr, "set conf :%s\n", FLAGS_conf);
     } else {
       PrintUsage();
     }
   }
+
+  printf("Cluster: %s\n", FLAGS_rados_cluster_name);
+  printf("User name: %s\n", FLAGS_user_name);
+  printf("Conf: %s\n", FLAGS_conf);
 }
 
 }  // namespace
