@@ -12,7 +12,15 @@
 
 #include "pdlfs-common/testharness.h"
 
-static const char* FLAGS_conf_file = "/tmp/ceph.conf";
+#include <stdio.h>
+#include <string.h>
+
+// Parameters for ceph.
+namespace {
+const char* FLAHS_user_name = "client.admin";
+const char* FLAGS_rados_cluster_name = "ceph";
+const char* FLAGS_conf = NULL;  // Use ceph defaults
+}  // namespace
 
 namespace pdlfs {
 namespace rados {
@@ -22,9 +30,11 @@ class RadosConnMgrTest {
 };
 
 TEST(RadosConnMgrTest, OpenAndClose) {
-  RadosConnMgr* mgr = new RadosConnMgr(RadosConnMgrOptions());
+  RadosConnMgrOptions options;
+  RadosConnMgr* const mgr = new RadosConnMgr(options);
   RadosConn* conn;
-  ASSERT_OK(mgr->OpenConn(FLAGS_conf_file, RadosConnOptions(), &conn));
+  ASSERT_OK(mgr->OpenConn(FLAGS_rados_cluster_name, FLAHS_user_name, FLAGS_conf,
+                          RadosConnOptions(), &conn));
   mgr->Release(conn);
   delete mgr;
 }
@@ -33,13 +43,17 @@ TEST(RadosConnMgrTest, OpenAndClose) {
 }  // namespace pdlfs
 
 int main(int argc, char* argv[]) {
-  ::pdlfs::Slice token;
   if (argc > 1) {
-    token = ::pdlfs::Slice(argv[argc - 1]);
-  }
-  if (token.starts_with("--withrados=")) {
-    token.remove_prefix(strlen("--withrados="));
-    FLAGS_conf_file = &token[0];
+    for (int i = 1; i < argc; ++i) {
+      ::pdlfs::Slice a = argv[i];
+      if (a.starts_with("--user=")) {
+        FLAHS_user_name = argv[i] + strlen("--user=");
+      } else if (a.starts_with("--cluster")) {
+        FLAGS_rados_cluster_name = argv[i] + strlen("--cluster=");
+      } else if (a.starts_with("--conf")) {
+        FLAGS_conf = argv[i] + strlen("--conf");
+      }
+    }
     return ::pdlfs::test::RunAllTests(&argc, &argv);
   } else {
     return 0;

@@ -72,12 +72,15 @@ class RadosConnMgr {
   // Open a rados connection. Return OK on success, or a non-OK status on
   // errors. The returned rados connection instance shall be released through
   // the connection manager when it is no longer needed.
-  Status OpenConn(const std::string& conf_file, const RadosConnOptions& options,
+  // REQUIRES: both cluster_name and user_name must be specified;
+  // conf_file may be NULL according to ceph.
+  Status OpenConn(const char* cluster_name, const char* user_name,
+                  const char* conf_file, const RadosConnOptions& options,
                   RadosConn** conn);
 
   // Create a rados osd instance backed by an open rados connection. Return OK
   // on success, or a non-OK status on errors. The returned osd instance shall
-  // be released when it is no longer needed.
+  // be deleted when it is no longer needed.
   Status OpenOsd(RadosConn* conn, const std::string& pool_name,
                  const RadosOptions& options, Osd** osd);
 

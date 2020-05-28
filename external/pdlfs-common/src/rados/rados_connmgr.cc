@@ -66,9 +66,9 @@ inline void RadosConfSet(rados_t cluster, const char* opt, int val) {
 }
 
 Status RadosConfAndConnect(  ///
-    rados_t cluster, const std::string& conf_file,
+    rados_t cluster, const char* const conf_file,
     const RadosConnOptions& options) {
-  int rv = rados_conf_read_file(cluster, conf_file.c_str());
+  int rv = rados_conf_read_file(cluster, conf_file);
   if (rv == 0) {
     RadosConfSet(cluster, "rados_mon_op_timeout", options.mon_op_timeout);
     RadosConfSet(cluster, "rados_osd_op_timeout", options.osd_op_timeout);
@@ -84,12 +84,12 @@ Status RadosConfAndConnect(  ///
 }  // namespace
 
 Status RadosConnMgr::OpenConn(  ///
-    const std::string& conf_file, const RadosConnOptions& options,
-    RadosConn** conn) {
+    const char* cluster_name, const char* user_name, const char* conf_file,
+    const RadosConnOptions& options, RadosConn** conn) {
   rados_t cluster;
-  int rv = rados_create(&cluster, NULL);
+  int rv = rados_create2(&cluster, cluster_name, user_name, 0);
   if (rv < 0) {
-    return RadosError("Cannot create a rados handle", rv);
+    return RadosError("Error creating hdl", rv);
   }
   Status status = RadosConfAndConnect(cluster, conf_file, options);
   if (!status.ok()) {
