@@ -8,13 +8,12 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
-
 #pragma once
 
-#include "pdlfs-common/leveldb/dbfiles.h"
+#include "rados_comm.h"
+#include "rados_connmgr.h"
 
-#include "rados_common.h"
-#include "rados_conn.h"
+#include "pdlfs-common/leveldb/filenames.h"
 
 namespace pdlfs {
 namespace rados {
@@ -45,7 +44,7 @@ class RadosEnv : public EnvWrapper {
   bool FileOnRados(const char* fname);
 
   RadosEnv(Env* e) : EnvWrapper(e) {}
-  friend class RadosConn;
+  friend class RadosConnMgr;
   size_t wal_buf_size_;
   std::string rados_root_;
   Ofs* ofs_;

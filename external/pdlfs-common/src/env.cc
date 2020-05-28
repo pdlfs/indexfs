@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 
-#if defined(PDLFS_RADOS)
+#if 0
 #include "pdlfs-common/rados/rados_ld.h"
 #endif
 
@@ -76,7 +76,7 @@ Env* Env::Open(const char* name, const char* conf, bool* is_system) {
   // Verbose(__LOG_ARGS__, 1, "env.conf -> %s", env_conf_str);
 #endif
 // RADOS
-#if defined(PDLFS_RADOS)
+#if 0
   if (env_name == "rados") {
     return (Env*)PDLFS_Load_rados_env(env_conf.c_str());
   }
