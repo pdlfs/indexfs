@@ -136,11 +136,11 @@ void RadosConnMgr::Release(RadosConn* conn) {
 }
 
 Status RadosConnMgr::OpenOsd(  ///
-    RadosConn* conn, const std::string& pool_name, const RadosOptions& options,
+    RadosConn* conn, const char* pool_name, const RadosOptions& options,
     Osd** result) {
   Status status;
   rados_ioctx_t ioctx;
-  int rv = rados_ioctx_create(conn->cluster, pool_name.c_str(), &ioctx);
+  int rv = rados_ioctx_create(conn->cluster, pool_name, &ioctx);
   if (rv < 0) {
     status = RadosError("Cannot create ioctx", rv);
   } else {

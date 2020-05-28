@@ -126,43 +126,6 @@ RadosTest::~RadosTest() {
   delete osd_;
 }
 
-TEST(RadosTest, OSD_PutAndExists) {
-  const char* name = "a";
-  osd_->Delete(name);
-  ASSERT_OK(osd_->Put(name, Slice()));
-  ASSERT_TRUE(osd_->Exists(name));
-  osd_->Delete(name);
-  ASSERT_TRUE(!osd_->Exists(name));
-}
-
-TEST(RadosTest, OSD_ReadWrite) {
-  const char* name = "a";
-  const char* data = "xxxxxxxyyyyzz";
-  osd_->Delete(name);
-  ASSERT_OK(WriteStringToFileSync(osd_, Slice(data), name));
-  uint64_t size;
-  ASSERT_OK(osd_->Size(name, &size));
-  ASSERT_TRUE(size == strlen(data));
-  std::string tmp;
-  ASSERT_OK(ReadFileToString(osd_, name, &tmp));
-  ASSERT_EQ(Slice(tmp), Slice(data));
-  osd_->Delete(name);
-}
-
-TEST(RadosTest, OSD_PutGetCopy) {
-  const char* src = "a";
-  const char* dst = "b";
-  const char* data = "xxxxxxxyyyyzz";
-  std::string tmp;
-  osd_->Delete(src);
-  osd_->Delete(dst);
-  ASSERT_OK(osd_->Put(src, Slice(data)));
-  ASSERT_OK(osd_->Copy(src, dst));
-  ASSERT_OK(osd_->Get(dst, &tmp));
-  ASSERT_EQ(Slice(tmp), Slice(data));
-  osd_->Delete(src);
-  osd_->Delete(dst);
-}
 
 TEST(RadosTest, FileLock) {
   FileLock* lock;

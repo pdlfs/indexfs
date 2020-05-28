@@ -81,7 +81,7 @@ class RadosConnMgr {
   // Create a rados osd instance backed by an open rados connection. Return OK
   // on success, or a non-OK status on errors. The returned osd instance shall
   // be deleted when it is no longer needed.
-  Status OpenOsd(RadosConn* conn, const std::string& pool_name,
+  Status OpenOsd(RadosConn* conn, const char* pool_name,
                  const RadosOptions& options, Osd** osd);
 
   // Create a rados env instance backed by an open osd instance. Return OK on
