@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// Parameters for ceph.
+// Parameters for opening ceph.
 namespace {
 const char* FLAGS_user_name = "client.admin";
 const char* FLAGS_rados_cluster_name = "ceph";
@@ -117,9 +117,9 @@ void ParseArgs(int argc, char* argv[]) {
     }
   }
 
-  printf("Cluster: %s\n", FLAGS_rados_cluster_name);
+  printf("Cluster name: %s\n", FLAGS_rados_cluster_name);
   printf("User name: %s\n", FLAGS_user_name);
-  printf("Pool name: %s\n", FLAGS_pool_name);
+  printf("Storage pool: %s\n", FLAGS_pool_name);
   printf("Conf: %s\n", FLAGS_conf);
 }
 

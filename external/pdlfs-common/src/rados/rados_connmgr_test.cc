@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// Parameters for ceph.
+// Parameters for opening ceph.
 namespace {
 const char* FLAGS_user_name = "client.admin";
 const char* FLAGS_rados_cluster_name = "ceph";
