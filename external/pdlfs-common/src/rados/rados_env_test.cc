@@ -50,12 +50,12 @@ class RadosEnvTest {
     return working_dir_ + "/" + file;
   }
 
-  bool Exists(const std::string& fname) {
-    return env_->FileExists(fname.c_str());
+  Status Delete(const std::string& fname) {  // Dir shall be mounted readwrite
+    return env_->DeleteFile(fname.c_str());
   }
 
-  Status Delete(const std::string& fname) {
-    return env_->DeleteFile(fname.c_str());
+  bool Exists(const std::string& fname) {
+    return env_->FileExists(fname.c_str());
   }
 
   ~RadosEnvTest() {
@@ -96,7 +96,7 @@ TEST(RadosEnvTest, ListDir) {
   ASSERT_OK(Delete(fname2));
 }
 
-TEST(RadosEnvTest, MountAndUnmount1) {
+TEST(RadosEnvTest, MountAndUnmount) {
   Open();
   std::string fname1 = TEST_filename("f1");
   std::string fname2 = TEST_filename("f2");
@@ -107,14 +107,6 @@ TEST(RadosEnvTest, MountAndUnmount1) {
   ASSERT_TRUE(Exists(fname1));
   ASSERT_ERR(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_FALSE(Exists(fname2));
-  ASSERT_OK(Delete(fname1));
-}
-
-TEST(RadosEnvTest, MountAndUnmount2) {
-  Open();
-  std::string fname1 = TEST_filename("f1");
-  std::string fname2 = TEST_filename("f2");
-  ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
   // Test unmount and re-mount readwrite
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->CreateDir(working_dir_.c_str()));
