@@ -47,9 +47,14 @@ struct RadosConnMgrOptions {
 struct RadosEnvOptions {
   RadosEnvOptions();
   // Rados mount point. All files and directories beneath it will sink into
-  // rados and be stored at rados.
-  // Default: "/";
+  // rados and be stored as plain data objects and special file set objects.
+  // The portion of a file or a directory path beyond the mount point will be
+  // used to name a rados object or a file set.
+  // Default: "/"
   std::string rados_root;
+  // Logger for env internal/error information.
+  // Default: NULL
+  Logger* info_log;
 };
 
 // Options for constructing a rados osd instance.

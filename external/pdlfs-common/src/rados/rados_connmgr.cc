@@ -10,7 +10,7 @@
  */
 #include "rados_connmgr.h"
 
-#include "rados_dbenv.h"
+#include "rados_db_env.h"
 #include "rados_osd.h"
 
 #include "pdlfs-common/mutexlock.h"
@@ -24,7 +24,7 @@ RadosConnOptions::RadosConnOptions()
 
 RadosConnMgrOptions::RadosConnMgrOptions() : info_log(NULL) {}
 
-RadosEnvOptions::RadosEnvOptions() : rados_root("/") {}
+RadosEnvOptions::RadosEnvOptions() : rados_root("/"), info_log(NULL) {}
 
 RadosOptions::RadosOptions() : force_syncio(false) {}
 
