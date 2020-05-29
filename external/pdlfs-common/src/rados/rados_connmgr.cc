@@ -108,6 +108,10 @@ Status RadosConnMgr::OpenConn(  ///
       cluster, new_conn->cluster_fsid, sizeof(new_conn->cluster_fsid));
   new_conn->cluster = cluster;
   new_conn->nrefs = 1;
+#if VERBOSE >= 1
+  Log(rep_->options.info_log, 1, "Connected to cluster %s ...",
+      new_conn->cluster_fsid);
+#endif
   *conn = new_conn;
   return status;
 }
@@ -120,7 +124,7 @@ void RadosConnMgr::Unref(RadosConn* const conn) {
     conn->next->prev = conn->prev;
     conn->prev->next = conn->next;
 #if VERBOSE >= 1
-    Log(rep_->options.info_log, 1, "Shutting down rados cluster %s ...",
+    Log(rep_->options.info_log, 1, "Closing connection to cluster %s ...",
         conn->cluster_fsid);
 #endif
     rados_shutdown(conn->cluster);
