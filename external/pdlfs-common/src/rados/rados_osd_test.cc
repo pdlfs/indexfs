@@ -96,7 +96,7 @@ TEST(RadosOsdTest, PutGetCopy) {
 }  // namespace pdlfs
 
 namespace {
-void PrintUsage() {
+inline void PrintUsage() {
   fprintf(stderr, "Use --cluster, --user, --conf, and --pool to conf test.\n");
   exit(1);
 }

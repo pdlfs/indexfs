@@ -43,7 +43,7 @@ TEST(RadosConnMgrTest, OpenAndClose) {
 }  // namespace pdlfs
 
 namespace {
-void PrintUsage() {
+inline void PrintUsage() {
   fprintf(stderr, "Use --cluster, --user, and --conf to conf test.\n");
   exit(1);
 }
@@ -62,7 +62,7 @@ void ParseArgs(int argc, char* argv[]) {
     }
   }
 
-  printf("Cluster: %s\n", FLAGS_rados_cluster_name);
+  printf("Cluster name: %s\n", FLAGS_rados_cluster_name);
   printf("User name: %s\n", FLAGS_user_name);
   printf("Conf: %s\n", FLAGS_conf);
 }

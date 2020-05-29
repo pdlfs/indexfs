@@ -106,16 +106,17 @@ TEST(RadosEnvTest, ReadWriteFiles) {
 }
 
 namespace {
-// Reload the working dir.
-// Check the existence of a specified file under the next context.
+// Reload the working dir. Check the existence of a specified file under the
+// next context.
 void Reload(Env* env, const std::string& dir, const char* fname) {
   ASSERT_OK(env->DetachDir(dir.c_str()));
   ASSERT_OK(env->CreateDir(dir.c_str()));
   ASSERT_TRUE(env->FileExists(fname));
 }
 
-// Reload the working dir readonly.
-// Check the existence of a specified file under the next context.
+// Reload the working dir readonly (cannot edit the directory by adding or
+// deleting files). Check the existence of a specified file under the next
+// context.
 void ReloadReadonly(Env* env, const std::string& dir, const char* fname) {
   ASSERT_OK(env->DetachDir(dir.c_str()));
   ASSERT_OK(env->AttachDir(dir.c_str()));
@@ -137,6 +138,41 @@ TEST(RadosEnvTest, Reloading) {
 }  // namespace rados
 }  // namespace pdlfs
 
+namespace {
+inline void PrintUsage() {
+  fprintf(stderr, "Use --cluster, --user, --conf, and --pool to conf test.\n");
+  exit(1);
+}
+
+void ParseArgs(int argc, char* argv[]) {
+  for (int i = 1; i < argc; ++i) {
+    ::pdlfs::Slice a = argv[i];
+    if (a.starts_with("--cluster=")) {
+      FLAGS_rados_cluster_name = argv[i] + strlen("--cluster=");
+    } else if (a.starts_with("--user=")) {
+      FLAGS_user_name = argv[i] + strlen("--user=");
+    } else if (a.starts_with("--conf=")) {
+      FLAGS_conf = argv[i] + strlen("--conf=");
+    } else if (a.starts_with("--pool=")) {
+      FLAGS_pool_name = argv[i] + strlen("--pool=");
+    } else {
+      PrintUsage();
+    }
+  }
+
+  printf("Cluster name: %s\n", FLAGS_rados_cluster_name);
+  printf("User name: %s\n", FLAGS_user_name);
+  printf("Storage pool: %s\n", FLAGS_pool_name);
+  printf("Conf: %s\n", FLAGS_conf);
+}
+
+}  // namespace
+
 int main(int argc, char* argv[]) {
-  return ::pdlfs::test::RunAllTests(&argc, &argv);
+  if (argc > 1) {
+    ParseArgs(argc, argv);
+    return ::pdlfs::test::RunAllTests(&argc, &argv);
+  } else {
+    return 0;
+  }
 }
