@@ -28,6 +28,7 @@ namespace rados {
 class RadosEnvTest {
  public:
   RadosEnvTest() : working_dir_("/testdir1/testdir2") {
+    bytes_ = "xyzxyzxyz";
     RadosConnMgrOptions options;
     mgr_ = new RadosConnMgr(options);
     env_ = NULL;
@@ -55,6 +56,7 @@ class RadosEnvTest {
     delete mgr_;
   }
 
+  std::string bytes_;  // Test file contents
   std::string working_dir_;
   RadosConnMgr* mgr_;
   Env* env_;
@@ -62,23 +64,23 @@ class RadosEnvTest {
 
 TEST(RadosEnvTest, ReadAndWrite) {
   Open();
-  std::string fname1 = TEST_filename("/f1");
-  std::string fname2 = TEST_filename("/f2");
-  ASSERT_OK(WriteStringToFile(env_, "xyz", fname1.c_str()));
+  std::string fname1 = TEST_filename("f1");
+  std::string fname2 = TEST_filename("f2");
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
   ASSERT_TRUE(env_->FileExists(fname1.c_str()));
   std::string tmp;
   ASSERT_OK(ReadFileToString(env_, fname1.c_str(), &tmp));
-  ASSERT_EQ(Slice(tmp), "xyz");
+  ASSERT_EQ(Slice(tmp), bytes_);
   ASSERT_OK(env_->DeleteFile(fname1.c_str()));
   ASSERT_FALSE(env_->FileExists(fname2.c_str()));
 }
 
 TEST(RadosEnvTest, ListDir) {
   Open();
-  std::string fname1 = TEST_filename("/f1");
-  std::string fname2 = TEST_filename("/f2");
-  ASSERT_OK(WriteStringToFile(env_, "xyz", fname1.c_str()));
-  ASSERT_OK(WriteStringToFile(env_, "xyz", fname2.c_str()));
+  std::string fname1 = TEST_filename("f1");
+  std::string fname2 = TEST_filename("f2");
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname2.c_str()));
   std::vector<std::string> v;
   ASSERT_OK(env_->GetChildren(working_dir_.c_str(), &v));
   ASSERT_EQ(v.size(), 2);
@@ -86,18 +88,18 @@ TEST(RadosEnvTest, ListDir) {
 
 TEST(RadosEnvTest, AttachAndDetachDir) {
   Open();
-  std::string fname1 = TEST_filename("/f1");
-  std::string fname2 = TEST_filename("/f2");
-  ASSERT_OK(WriteStringToFile(env_, "xyz", fname1.c_str()));
+  std::string fname1 = TEST_filename("f1");
+  std::string fname2 = TEST_filename("f2");
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
   // Test unmount and re-mount readonly
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->AttachDir(working_dir_.c_str()));
-  ASSERT_ERR(WriteStringToFile(env_, "xyz", fname2.c_str()));
+  ASSERT_ERR(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_TRUE(env_->FileExists(fname1.c_str()));
   // Test unmount and re-mount readwrite
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->CreateDir(working_dir_.c_str()));
-  ASSERT_OK(WriteStringToFile(env_, "xyz", fname2.c_str()));
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_TRUE(env_->FileExists(fname1.c_str()));
   ASSERT_TRUE(env_->FileExists(fname2.c_str()));
 }
