@@ -9,19 +9,19 @@
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
 
-#include "rados_env.h"
+#include "rados_dbenv.h"
 
 #include "pdlfs-common/env_files.h"
 
 namespace pdlfs {
 namespace rados {
 
-RadosEnv::~RadosEnv() {
+RadosDbEnvWrapper::~RadosDbEnvWrapper() {
   if (owns_osd_) delete osd_;
   delete ofs_;
 }
 
-Status RadosEnv::MountDir(const char* dirname, bool create_dir) {
+Status RadosDbEnvWrapper::MountDir(const char* dirname, bool create_dir) {
   Slice path = dirname;
   assert(path.starts_with(rados_root_));
   if (rados_root_.size() > 1) path.remove_prefix(rados_root_.size());
@@ -46,7 +46,7 @@ Status RadosEnv::MountDir(const char* dirname, bool create_dir) {
   return s;
 }
 
-Status RadosEnv::UnmountDir(const char* dirname, bool delete_dir) {
+Status RadosDbEnvWrapper::UnmountDir(const char* dirname, bool delete_dir) {
   Status s;
   UnmountOptions options;
   options.deletion = delete_dir;
@@ -62,7 +62,7 @@ Status RadosEnv::UnmountDir(const char* dirname, bool delete_dir) {
   return s;
 }
 
-bool RadosEnv::PathOnRados(const char* pathname) {
+bool RadosDbEnvWrapper::PathOnRados(const char* pathname) {
   const size_t n = rados_root_.length();
   assert(n != 0);
   if (n == 1) return true;
@@ -70,57 +70,57 @@ bool RadosEnv::PathOnRados(const char* pathname) {
   return (pathname[n] == '/' || pathname[n] == '\0');
 }
 
-bool RadosEnv::FileOnRados(const char* fname) {
+bool RadosDbEnvWrapper::FileOnRados(const char* fname) {
   if (PathOnRados(fname)) return TypeOnRados(TryResolveFileType(fname));
   return false;
 }
 
-bool RadosEnv::FileExists(const char* fname) {
+bool RadosDbEnvWrapper::FileExists(const char* fname) {
   if (FileOnRados(fname)) return ofs_->FileExists(fname);
   return target()->FileExists(fname);
 }
 
-Status RadosEnv::GetFileSize(const char* fname, uint64_t* size) {
+Status RadosDbEnvWrapper::GetFileSize(const char* fname, uint64_t* size) {
   if (FileOnRados(fname)) return ofs_->GetFileSize(fname, size);
   return target()->GetFileSize(fname, size);
 }
 
-Status RadosEnv::DeleteFile(const char* fname) {
+Status RadosDbEnvWrapper::DeleteFile(const char* fname) {
   if (FileOnRados(fname)) return ofs_->DeleteFile(fname);
   return target()->DeleteFile(fname);
 }
 
-Status RadosEnv::NewSequentialFile(const char* fname, SequentialFile** r) {
+Status RadosDbEnvWrapper::NewSequentialFile(const char* fname, SequentialFile** r) {
   if (FileOnRados(fname)) return ofs_->NewSequentialFile(fname, r);
   return target()->NewSequentialFile(fname, r);
 }
 
-Status RadosEnv::NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
+Status RadosDbEnvWrapper::NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
   if (FileOnRados(fname)) return ofs_->NewRandomAccessFile(fname, r);
   return target()->NewRandomAccessFile(fname, r);
 }
 
-Status RadosEnv::CreateDir(const char* dirname) {
+Status RadosDbEnvWrapper::CreateDir(const char* dirname) {
   if (PathOnRados(dirname)) return MountDir(dirname, true);
   return target()->CreateDir(dirname);
 }
 
-Status RadosEnv::AttachDir(const char* dirname) {
+Status RadosDbEnvWrapper::AttachDir(const char* dirname) {
   if (PathOnRados(dirname)) return MountDir(dirname, false);
   return target()->AttachDir(dirname);
 }
 
-Status RadosEnv::DeleteDir(const char* dirname) {
+Status RadosDbEnvWrapper::DeleteDir(const char* dirname) {
   if (PathOnRados(dirname)) return UnmountDir(dirname, true);
   return target()->DeleteDir(dirname);
 }
 
-Status RadosEnv::DetachDir(const char* dirname) {
+Status RadosDbEnvWrapper::DetachDir(const char* dirname) {
   if (PathOnRados(dirname)) return UnmountDir(dirname, false);
   return target()->DetachDir(dirname);
 }
 
-Status RadosEnv::CopyFile(const char* src, const char* dst) {
+Status RadosDbEnvWrapper::CopyFile(const char* src, const char* dst) {
   const int src_on_rados = FileOnRados(src);
   const int dst_on_rados = FileOnRados(dst);
   if (src_on_rados ^ dst_on_rados) return Status::NotSupported(Slice());
@@ -128,7 +128,7 @@ Status RadosEnv::CopyFile(const char* src, const char* dst) {
   return target()->CopyFile(src, dst);
 }
 
-Status RadosEnv::RenameFile(const char* src, const char* dst) {
+Status RadosDbEnvWrapper::RenameFile(const char* src, const char* dst) {
   const int src_on_rados = FileOnRados(src);
   const int dst_on_rados = FileOnRados(dst);
   if (TryResolveFileType(src) == kTempFile && !src_on_rados && dst_on_rados)
@@ -137,7 +137,7 @@ Status RadosEnv::RenameFile(const char* src, const char* dst) {
   return Status::NotSupported(Slice());
 }
 
-Status RadosEnv::GetChildren(const char* dirname, std::vector<std::string>* r) {
+Status RadosDbEnvWrapper::GetChildren(const char* dirname, std::vector<std::string>* r) {
   r->clear();
   Status s = target()->GetChildren(dirname, r);
   if (PathOnRados(dirname)) {
@@ -153,7 +153,7 @@ Status RadosEnv::GetChildren(const char* dirname, std::vector<std::string>* r) {
   return s;
 }
 
-Status RadosEnv::NewWritableFile(const char* fname, WritableFile** r) {
+Status RadosDbEnvWrapper::NewWritableFile(const char* fname, WritableFile** r) {
   const size_t buf_size = wal_buf_size_;
   if (FileOnRados(fname)) {
     Status s = ofs_->NewWritableFile(fname, r);
@@ -166,7 +166,7 @@ Status RadosEnv::NewWritableFile(const char* fname, WritableFile** r) {
   }
 }
 
-Status RadosEnv::RenameLocalTmpToRados(const char* tmp, const char* dst) {
+Status RadosDbEnvWrapper::RenameLocalTmpToRados(const char* tmp, const char* dst) {
   std::string contents;
   Status s = ReadFileToString(target(), tmp, &contents);
   if (s.ok()) {

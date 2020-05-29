@@ -18,9 +18,9 @@
 namespace pdlfs {
 namespace rados {
 
-class RadosEnv : public EnvWrapper {
+class RadosDbEnvWrapper : public EnvWrapper {
  public:
-  virtual ~RadosEnv();
+  virtual ~RadosDbEnvWrapper();
   virtual Status NewSequentialFile(const char* f, SequentialFile** r);
   virtual Status NewRandomAccessFile(const char* f, RandomAccessFile** r);
   virtual Status NewWritableFile(const char* f, WritableFile** r);
@@ -43,7 +43,7 @@ class RadosEnv : public EnvWrapper {
   bool PathOnRados(const char* pathname);
   bool FileOnRados(const char* fname);
 
-  RadosEnv(Env* e) : EnvWrapper(e) {}
+  RadosDbEnvWrapper(Env* e) : EnvWrapper(e) {}
   friend class RadosConnMgr;
   size_t wal_buf_size_;
   std::string rados_root_;

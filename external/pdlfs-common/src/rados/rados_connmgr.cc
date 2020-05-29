@@ -10,7 +10,7 @@
  */
 #include "rados_connmgr.h"
 
-#include "rados_env.h"
+#include "rados_dbenv.h"
 #include "rados_osd.h"
 
 #include "pdlfs-common/mutexlock.h"
@@ -163,7 +163,7 @@ Status RadosConnMgr::OpenOsd(  ///
 
 Env* RadosConnMgr::OpenEnv(  ///
     Env* base_env, Osd* osd, bool owns_osd, const RadosEnvOptions& options) {
-  RadosEnv* const env = new RadosEnv(base_env);
+  RadosDbEnvWrapper* const env = new RadosDbEnvWrapper(base_env);
   env->rados_root_ = options.rados_root;
   env->wal_buf_size_ = 1 << 17;  // 128 kB
   env->owns_osd_ = owns_osd;

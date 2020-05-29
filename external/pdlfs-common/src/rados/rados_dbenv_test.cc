@@ -8,7 +8,7 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
-#include "rados_env.h"
+#include "rados_dbenv.h"
 
 #include "pdlfs-common/leveldb/db.h"
 #include "pdlfs-common/testharness.h"
