@@ -136,6 +136,7 @@ void ReloadReadonly(Env* env, const std::string& dir, const char* fname) {
 }  // namespace
 
 TEST(RadosEnvTest, Reloading) {
+  Open();
   std::string fname = TableFileName(working_dir_, 7);
   for (int i = 0; i < 3; i++) {
     WriteStringToFile(env_, "xxxxxxxxx", fname.c_str());
