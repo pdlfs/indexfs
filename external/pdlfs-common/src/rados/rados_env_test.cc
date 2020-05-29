@@ -10,6 +10,7 @@
  */
 #include "rados_env.h"
 
+#include "pdlfs-common/leveldb/db.h"
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
@@ -31,8 +32,8 @@ namespace rados {
 
 class RadosEnvTest {
  public:
-  RadosEnvTest() {
-    working_dir_ = "/tmp/testdir1/testdir2";
+  RadosEnvTest() : working_dir_(test::TmpDir() + "/rados_env_test") {
+    DestroyDB(working_dir_, DBOptions());
     RadosConnMgrOptions options;
     mgr_ = new RadosConnMgr(options);
     env_ = NULL;
