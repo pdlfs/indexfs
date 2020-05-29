@@ -54,6 +54,10 @@ class RadosEnvTest {
     return env_->FileExists(fname.c_str());
   }
 
+  Status Delete(const std::string& fname) {
+    return env_->DeleteFile(fname.c_str());
+  }
+
   ~RadosEnvTest() {
     env_->DeleteDir(working_dir_.c_str());
     delete env_;
@@ -75,7 +79,7 @@ TEST(RadosEnvTest, ReadAndWrite) {
   std::string tmp;
   ASSERT_OK(ReadFileToString(env_, fname1.c_str(), &tmp));
   ASSERT_EQ(Slice(tmp), bytes_);
-  ASSERT_OK(env_->DeleteFile(fname1.c_str()));
+  ASSERT_OK(Delete(fname1));
   ASSERT_FALSE(Exists(fname2));
 }
 
@@ -88,6 +92,8 @@ TEST(RadosEnvTest, ListDir) {
   std::vector<std::string> v;
   ASSERT_OK(env_->GetChildren(working_dir_.c_str(), &v));
   ASSERT_EQ(v.size(), 2);
+  ASSERT_OK(Delete(fname1));
+  ASSERT_OK(Delete(fname2));
 }
 
 TEST(RadosEnvTest, MountAndUnmount1) {
@@ -98,9 +104,10 @@ TEST(RadosEnvTest, MountAndUnmount1) {
   // Test unmount and re-mount readonly
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->AttachDir(working_dir_.c_str()));
-  ASSERT_ERR(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_TRUE(Exists(fname1));
+  ASSERT_ERR(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_FALSE(Exists(fname2));
+  ASSERT_OK(Delete(fname1));
 }
 
 TEST(RadosEnvTest, MountAndUnmount2) {
@@ -111,9 +118,11 @@ TEST(RadosEnvTest, MountAndUnmount2) {
   // Test unmount and re-mount readwrite
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->CreateDir(working_dir_.c_str()));
-  ASSERT_OK(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_TRUE(Exists(fname1));
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname2.c_str()));
   ASSERT_TRUE(Exists(fname2));
+  ASSERT_OK(Delete(fname1));
+  ASSERT_OK(Delete(fname2));
 }
 
 }  // namespace rados
