@@ -14,7 +14,11 @@ namespace pdlfs {
 namespace rados {
 
 RadosEnv::RadosEnv(const RadosEnvOptions& options)
-    : options_(options), ofs_(NULL), owns_osd_(false), osd_(NULL) {}
+    : options_(options), ofs_(NULL), owns_osd_(false), osd_(NULL) {
+  if (!options_.info_log) {
+    options_.info_log = Logger::Default();
+  }
+}
 
 RadosEnv::~RadosEnv() {
   if (owns_osd_) delete osd_;
