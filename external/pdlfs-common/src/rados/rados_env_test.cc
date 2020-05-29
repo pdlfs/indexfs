@@ -77,6 +77,7 @@ void UseFile(Env* env, const char* dirname, const char* fname) {
 }  // namespace
 
 TEST(RadosEnvTest, FileLock) {
+  Open();
   FileLock* lock;
   std::string lockname = LockFileName(working_dir_);
   ASSERT_OK(env_->LockFile(lockname.c_str(), &lock));
@@ -85,6 +86,7 @@ TEST(RadosEnvTest, FileLock) {
 }
 
 TEST(RadosEnvTest, SetCurrentFile) {
+  Open();
   ASSERT_OK(SetCurrentFile(env_, working_dir_, 1));
   std::string curr = CurrentFileName(working_dir_);
   ASSERT_TRUE(env_->FileExists(curr.c_str()));
@@ -92,6 +94,7 @@ TEST(RadosEnvTest, SetCurrentFile) {
 }
 
 TEST(RadosEnvTest, ReadWriteFiles) {
+  Open();
   std::vector<std::string> fnames;
   fnames.push_back(DescriptorFileName(working_dir_, 1));
   fnames.push_back(LogFileName(working_dir_, 2));
