@@ -46,8 +46,12 @@ class RadosEnvTest {
     mgr_->Release(conn);
   }
 
-  std::string TEST_filename(const char* fname) {
-    return working_dir_ + "/" + fname;
+  inline std::string TEST_filename(const char* file) {
+    return working_dir_ + "/" + file;
+  }
+
+  bool Exists(const std::string& fname) {
+    return env_->FileExists(fname.c_str());
   }
 
   ~RadosEnvTest() {
@@ -67,12 +71,12 @@ TEST(RadosEnvTest, ReadAndWrite) {
   std::string fname1 = TEST_filename("f1");
   std::string fname2 = TEST_filename("f2");
   ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
-  ASSERT_TRUE(env_->FileExists(fname1.c_str()));
+  ASSERT_TRUE(Exists(fname1));
   std::string tmp;
   ASSERT_OK(ReadFileToString(env_, fname1.c_str(), &tmp));
   ASSERT_EQ(Slice(tmp), bytes_);
   ASSERT_OK(env_->DeleteFile(fname1.c_str()));
-  ASSERT_FALSE(env_->FileExists(fname2.c_str()));
+  ASSERT_FALSE(Exists(fname2));
 }
 
 TEST(RadosEnvTest, ListDir) {
@@ -86,7 +90,7 @@ TEST(RadosEnvTest, ListDir) {
   ASSERT_EQ(v.size(), 2);
 }
 
-TEST(RadosEnvTest, AttachAndDetachDir) {
+TEST(RadosEnvTest, MountAndUnmount1) {
   Open();
   std::string fname1 = TEST_filename("f1");
   std::string fname2 = TEST_filename("f2");
@@ -95,13 +99,21 @@ TEST(RadosEnvTest, AttachAndDetachDir) {
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->AttachDir(working_dir_.c_str()));
   ASSERT_ERR(WriteStringToFile(env_, bytes_, fname2.c_str()));
-  ASSERT_TRUE(env_->FileExists(fname1.c_str()));
+  ASSERT_TRUE(Exists(fname1));
+  ASSERT_FALSE(Exists(fname2));
+}
+
+TEST(RadosEnvTest, MountAndUnmount2) {
+  Open();
+  std::string fname1 = TEST_filename("f1");
+  std::string fname2 = TEST_filename("f2");
+  ASSERT_OK(WriteStringToFile(env_, bytes_, fname1.c_str()));
   // Test unmount and re-mount readwrite
   ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
   ASSERT_OK(env_->CreateDir(working_dir_.c_str()));
   ASSERT_OK(WriteStringToFile(env_, bytes_, fname2.c_str()));
-  ASSERT_TRUE(env_->FileExists(fname1.c_str()));
-  ASSERT_TRUE(env_->FileExists(fname2.c_str()));
+  ASSERT_TRUE(Exists(fname1));
+  ASSERT_TRUE(Exists(fname2));
 }
 
 }  // namespace rados
