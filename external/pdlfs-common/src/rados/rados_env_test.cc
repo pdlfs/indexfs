@@ -46,6 +46,13 @@ class RadosEnvTest {
     ASSERT_OK(mgr_->OpenOsd(conn, FLAGS_pool_name, RadosOptions(), &osd));
     env_ = RadosConnMgr::OpenEnv(Env::Default(), osd, true, RadosEnvOptions());
     mgr_->Release(conn);
+    env_->CreateDir(working_dir_.c_str());
+  }
+
+  ~RadosEnvTest() {
+    env_->DeleteDir(working_dir_.c_str());
+    delete env_;
+    delete mgr_;
   }
 
   std::string working_dir_;
@@ -79,18 +86,18 @@ void UseFile(Env* env, const char* dirname, const char* fname) {
 TEST(RadosEnvTest, FileLock) {
   Open();
   FileLock* lock;
-  std::string lockname = LockFileName(working_dir_);
-  ASSERT_OK(env_->LockFile(lockname.c_str(), &lock));
+  std::string fname = LockFileName(working_dir_);
+  ASSERT_OK(env_->LockFile(fname.c_str(), &lock));
   ASSERT_OK(env_->UnlockFile(lock));
-  ASSERT_OK(env_->DeleteFile(lockname.c_str()));
+  ASSERT_OK(env_->DeleteFile(fname.c_str()));
 }
 
-TEST(RadosEnvTest, SetCurrentFile) {
+TEST(RadosEnvTest, CurrentFile) {
   Open();
   ASSERT_OK(SetCurrentFile(env_, working_dir_, 1));
-  std::string curr = CurrentFileName(working_dir_);
-  ASSERT_TRUE(env_->FileExists(curr.c_str()));
-  ASSERT_OK(env_->DeleteFile(curr.c_str()));
+  std::string fname = CurrentFileName(working_dir_);
+  ASSERT_TRUE(env_->FileExists(fname.c_str()));
+  ASSERT_OK(env_->DeleteFile(fname.c_str()));
 }
 
 TEST(RadosEnvTest, ReadWriteFiles) {
