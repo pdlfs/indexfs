@@ -8,52 +8,55 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. See the AUTHORS file for names of contributors.
  */
-
 #include "rados_env.h"
-#include "rados_conn.h"
 
-#include "pdlfs-common/ofs.h"
-#include "pdlfs-common/pdlfs_config.h"
 #include "pdlfs-common/testharness.h"
 #include "pdlfs-common/testutil.h"
 
 #include <algorithm>
+#include <stdio.h>
+#include <string.h>
 #include <vector>
 
-// The following tests are paired with "$top_srcdir/dev/rados.sh".
-// Run "sh $top_srcdir/dev/rados.sh start" to create a new rados cluster
-// on the local machine to prepare an environment necessary
-// to run the following tests.
-// Root permission is required in order to run this script.
-// Otherwise, set the following flag to TRUE to run tests against a simulated
-// rados cluster.
-#if defined(PDLFS_GFLAGS)
-#include <gflags/gflags.h>
-DEFINE_bool(useposixosd, true, "Use POSIX to simulate a ceph rados cluster");
-#else
+// Parameters for opening ceph.
 namespace {
-const bool FLAGS_useposixosd = true;
+const char* FLAGS_user_name = "client.admin";
+const char* FLAGS_rados_cluster_name = "ceph";
+const char* FLAGS_pool_name = "test";
+const char* FLAGS_conf = NULL;  // Use ceph defaults
 }  // namespace
-#endif
 
 namespace pdlfs {
 namespace rados {
 
-namespace {
-// Make sure we only connect to rados once during the entire run.
-port::OnceType once = PDLFS_ONCE_INIT;
-RadosConn* rados_conn = NULL;
-void OpenRadosConn() {
-  rados_conn = new RadosConn;
-  RadosOptions options;
-  fprintf(stderr, "Connecting to rados (%s) ...\n", options.conf_path.c_str());
-  Status s = rados_conn->Open(options);
-  ASSERT_OK(s);
-}
+class RadosEnvTest {
+ public:
+  RadosEnvTest() {
+    working_dir_ = "/tmp/testdir1/testdir2";
+    RadosConnMgrOptions options;
+    mgr_ = new RadosConnMgr(options);
+    env_ = NULL;
+  }
 
+  void Open() {
+    RadosConn* conn;
+    ASSERT_OK(mgr_->OpenConn(FLAGS_rados_cluster_name, FLAGS_user_name,
+                             FLAGS_conf, RadosConnOptions(), &conn));
+    Osd* osd;
+    ASSERT_OK(mgr_->OpenOsd(conn, FLAGS_pool_name, RadosOptions(), &osd));
+    env_ = RadosConnMgr::OpenEnv(Env::Default(), osd, true, RadosEnvOptions());
+    mgr_->Release(conn);
+  }
+
+  std::string working_dir_;
+  RadosConnMgr* mgr_;
+  Env* env_;
+};
+
+namespace {
 void UseFile(Env* env, const char* dirname, const char* fname) {
   std::string rnddatastor;
-  Random rnd(301);
+  Random rnd(test::RandomSeed());
   for (int i = 0; i < 3; i++) {
     Slice rnddata = test::RandomString(&rnd, 16, &rnddatastor);
     env->DeleteFile(fname);
@@ -73,61 +76,7 @@ void UseFile(Env* env, const char* dirname, const char* fname) {
 }
 }  // namespace
 
-class RadosTest {
- public:
-  RadosTest();
-
-  // Reload the working dir.
-  // Check the existence of a specified file under the next context.
-  void Reload(const char* fname) {
-    fprintf(stderr, "Reloading...\n");
-    ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
-    ASSERT_OK(env_->CreateDir(working_dir_.c_str()));
-    ASSERT_TRUE(env_->FileExists(fname));
-  }
-
-  // Reload the working dir readonly.
-  // Check the existence of a specified file under the next context.
-  void ReloadReadonly(const char* fname) {
-    fprintf(stderr, "Reloading readonly...\n");
-    ASSERT_OK(env_->DetachDir(working_dir_.c_str()));
-    ASSERT_OK(env_->AttachDir(working_dir_.c_str()));
-    ASSERT_TRUE(env_->FileExists(fname));
-  }
-
-  ~RadosTest();
-  std::string pool_name_;
-  std::string working_dir_;
-  std::string root_;
-  Osd* osd_;
-  Env* env_;
-};
-
-RadosTest::RadosTest() {
-  pool_name_ = "metadata";
-  root_ = test::PrepareTmpDir("rados_test");
-  working_dir_ = root_;
-  if (FLAGS_useposixosd) {
-    std::string osd_root = test::PrepareTmpDir("rados_test_objs");
-    osd_ = Osd::FromEnv(osd_root.c_str());
-  } else {
-    port::InitOnce(&once, OpenRadosConn);
-    Status s = rados_conn->OpenOsd(&osd_, pool_name_);
-    ASSERT_OK(s);
-  }
-  Status s = rados_conn->OpenEnv(&env_, root_, pool_name_, osd_);
-  ASSERT_OK(s);
-  env_->CreateDir(working_dir_.c_str());
-}
-
-RadosTest::~RadosTest() {
-  env_->DeleteDir(working_dir_.c_str());
-  delete env_;
-  delete osd_;
-}
-
-
-TEST(RadosTest, FileLock) {
+TEST(RadosEnvTest, FileLock) {
   FileLock* lock;
   std::string lockname = LockFileName(working_dir_);
   ASSERT_OK(env_->LockFile(lockname.c_str(), &lock));
@@ -135,14 +84,14 @@ TEST(RadosTest, FileLock) {
   ASSERT_OK(env_->DeleteFile(lockname.c_str()));
 }
 
-TEST(RadosTest, SetCurrentFile) {
+TEST(RadosEnvTest, SetCurrentFile) {
   ASSERT_OK(SetCurrentFile(env_, working_dir_, 1));
   std::string curr = CurrentFileName(working_dir_);
   ASSERT_TRUE(env_->FileExists(curr.c_str()));
   ASSERT_OK(env_->DeleteFile(curr.c_str()));
 }
 
-TEST(RadosTest, ReadWriteFiles) {
+TEST(RadosEnvTest, ReadWriteFiles) {
   std::vector<std::string> fnames;
   fnames.push_back(DescriptorFileName(working_dir_, 1));
   fnames.push_back(LogFileName(working_dir_, 2));
@@ -156,17 +105,30 @@ TEST(RadosTest, ReadWriteFiles) {
   }
 }
 
-TEST(RadosTest, Reloading) {
+namespace {
+// Reload the working dir.
+// Check the existence of a specified file under the next context.
+void Reload(Env* env, const std::string& dir, const char* fname) {
+  ASSERT_OK(env->DetachDir(dir.c_str()));
+  ASSERT_OK(env->CreateDir(dir.c_str()));
+  ASSERT_TRUE(env->FileExists(fname));
+}
+
+// Reload the working dir readonly.
+// Check the existence of a specified file under the next context.
+void ReloadReadonly(Env* env, const std::string& dir, const char* fname) {
+  ASSERT_OK(env->DetachDir(dir.c_str()));
+  ASSERT_OK(env->AttachDir(dir.c_str()));
+  ASSERT_TRUE(env->FileExists(fname));
+}
+}  // namespace
+
+TEST(RadosEnvTest, Reloading) {
   std::string fname = TableFileName(working_dir_, 7);
   for (int i = 0; i < 3; i++) {
     WriteStringToFile(env_, "xxxxxxxxx", fname.c_str());
-    ReloadReadonly(fname.c_str());
-    ReloadReadonly(fname.c_str());
-    ReloadReadonly(fname.c_str());
-    Reload(fname.c_str());
-    Reload(fname.c_str());
-    Reload(fname.c_str());
-    Reload(fname.c_str());
+    ReloadReadonly(env_, working_dir_, fname.c_str());
+    Reload(env_, working_dir_, fname.c_str());
   }
 
   ASSERT_OK(env_->DeleteFile(fname.c_str()));

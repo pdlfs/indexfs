@@ -95,10 +95,10 @@ class RadosConnMgr {
   Status OpenOsd(RadosConn* conn, const char* pool_name,
                  const RadosOptions& options, Osd** osd);
 
-  // Create a rados env instance backed by an open osd instance. Return OK on
-  // success, or a non-OK status on errors. The returned env instance shall be
-  // deleted when it is no longer needed. For testing/debugging purposes, a
-  // non-rados osd instance may be used to create a ceph rados env.
+  // Create a rados env instance backed by an open osd instance. The returned
+  // env instance shall be deleted when it is no longer needed. For
+  // testing/debugging purposes, a non-rados osd instance may be used to create
+  // a ceph rados env.
   //
   // The resulting env provides a virtual filesystem namespace tree mounted on
   // the local filesystem at options.rados_root, such that each directory is
@@ -113,8 +113,8 @@ class RadosConnMgr {
   // will then be mapped to "_".
   //
   // REQUIRES: neither base_env nor osd may be NULL.
-  static Status OpenEnv(Env* base_env, Osd* osd, bool owns_osd,
-                        const RadosEnvOptions& options, Env** env);
+  static Env* OpenEnv(Env* base_env, Osd* osd, bool owns_osd,
+                      const RadosEnvOptions& options);
 
   void Release(RadosConn* conn);
 

@@ -161,17 +161,15 @@ Status RadosConnMgr::OpenOsd(  ///
   return status;
 }
 
-Status RadosConnMgr::OpenEnv(  ///
-    Env* base_env, Osd* osd, bool owns_osd, const RadosEnvOptions& options,
-    Env** result) {
+Env* RadosConnMgr::OpenEnv(  ///
+    Env* base_env, Osd* osd, bool owns_osd, const RadosEnvOptions& options) {
   RadosEnv* const env = new RadosEnv(base_env);
   env->rados_root_ = options.rados_root;
   env->wal_buf_size_ = 1 << 17;  // 128 kB
   env->owns_osd_ = owns_osd;
   env->ofs_ = new Ofs(osd);
   env->osd_ = osd;
-  *result = env;
-  return Status::OK();
+  return env;
 }
 
 }  // namespace rados
