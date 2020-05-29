@@ -72,8 +72,19 @@ class RadosConnMgr {
   // Open a rados connection. Return OK on success, or a non-OK status on
   // errors. The returned rados connection instance shall be released through
   // the connection manager when it is no longer needed.
-  // REQUIRES: both cluster_name and user_name must be specified;
-  // conf_file may be NULL according to ceph.
+  //
+  // REQUIRES: user_name must be specified if ceph auth (cephx) is enabled; not
+  // sure about cluster_name (it can be NULL or even be randomly set sometimes)
+  // but conf_file is allowed to be NULL. When conf_file is set to NULL, ceph
+  // will try to locate a config file at a list of fixed locations including
+  // $CEPH_CONF (environment variable), "/etc/ceph/ceph.conf", "~/.ceph/config",
+  // and "./ceph.conf". A keyring must be configured in the ceph config file
+  // (conf_file) for the specified user (user_name) when ceph auth (cephx) is
+  // enabled. In addition to that, at least one mon address shall be listed in
+  // the ceph config file.
+  //
+  // For more information, see
+  // https://docs.ceph.com/docs/master/rados/api/librados-intro/.
   Status OpenConn(const char* cluster_name, const char* user_name,
                   const char* conf_file, const RadosConnOptions& options,
                   RadosConn** conn);
