@@ -45,7 +45,8 @@ class RadosEnvTest {
                              FLAGS_conf, RadosConnOptions(), &conn));
     Osd* osd;
     ASSERT_OK(mgr_->OpenOsd(conn, FLAGS_pool_name, RadosOptions(), &osd));
-    env_ = RadosConnMgr::OpenEnv(Env::Default(), osd, true, RadosEnvOptions());
+    env_ =
+        RadosConnMgr::OpenDbEnv(Env::Default(), osd, true, RadosEnvOptions());
     mgr_->Release(conn);
     env_->CreateDir(working_dir_.c_str());
   }

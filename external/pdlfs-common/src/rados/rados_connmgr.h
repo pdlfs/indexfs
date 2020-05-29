@@ -106,10 +106,11 @@ class RadosConnMgr {
   // a ceph rados env.
   //
   // The resulting env provides a virtual filesystem namespace tree mounted on
-  // the local filesystem at options.rados_root, such that each directory is
-  // regarded as a fileset mapped to a remote rados object storing the members
-  // of the fileset, and each file under that set is mapped to an object that
-  // stores the contents of that file.
+  // the caller's local namespace at options.rados_root. File and directory
+  // operations are emulated atop rados such that each directory is regarded as
+  // a fileset mapped to a remote rados object storing the members of the
+  // fileset, and each file under that set is mapped to an object that stores
+  // the contents of that file.
   //
   // For example, if "rados_root" is set to "/", directory "/a/b/c" will be
   // mapped to a remote object named "_a_b_c", and file "/a/b/c/d" will be
@@ -117,9 +118,11 @@ class RadosConnMgr {
   // be mapped to "_b_c". And if "rados_root" is "/a/b/c", directory "/a/b/c"
   // will then be mapped to "_".
   //
-  // REQUIRES: neither base_env nor osd may be NULL.
-  static Env* OpenEnv(Env* base_env, Osd* osd, bool owns_osd,
-                      const RadosEnvOptions& options);
+  // RREQUIRES: osd is not NULL; if owns_osd is false, osd must remain alive
+  // before the returned Env is deleted.
+  static Env* OpenEnv(Osd* osd, bool owns_osd, const RadosEnvOptions& options);
+  static Env* OpenDbEnv(Env* base_env, Osd* osd, bool owns_osd,
+                        const RadosEnvOptions& options);
 
   void Release(RadosConn* conn);
 

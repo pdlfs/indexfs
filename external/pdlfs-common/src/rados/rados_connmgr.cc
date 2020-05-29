@@ -162,6 +162,15 @@ Status RadosConnMgr::OpenOsd(  ///
 }
 
 Env* RadosConnMgr::OpenEnv(  ///
+    Osd* osd, bool owns_osd, const RadosEnvOptions& options) {
+  RadosEnv* const env = new RadosEnv(options);
+  env->owns_osd_ = owns_osd;
+  env->ofs_ = new Ofs(osd);
+  env->osd_ = osd;
+  return env;
+}
+
+Env* RadosConnMgr::OpenDbEnv(  ///
     Env* base_env, Osd* osd, bool owns_osd, const RadosEnvOptions& options) {
   RadosDbEnvWrapper* const env = new RadosDbEnvWrapper(base_env);
   env->rados_root_ = options.rados_root;

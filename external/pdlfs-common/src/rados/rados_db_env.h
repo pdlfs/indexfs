@@ -10,8 +10,7 @@
  */
 #pragma once
 
-#include "rados_comm.h"
-#include "rados_connmgr.h"
+#include "rados_env.h"
 
 #include "pdlfs-common/leveldb/filenames.h"
 
