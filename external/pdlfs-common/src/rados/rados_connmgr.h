@@ -43,13 +43,30 @@ struct RadosConnMgrOptions {
   Logger* info_log;
 };
 
+struct RadosDbEnvOptions {
+  RadosDbEnvOptions();
+
+  // Write buffer size for db write ahead logs.
+  // Default: 128KB
+  uint64_t write_ahead_log_buf_size;
+
+  // Write buffer size for db table files.
+  // Default: 128KB
+  uint64_t table_file_buf_size;
+
+  // Logger for env internal/error information.
+  // Default: NULL
+  Logger* info_log;
+};
+
 // Options for constructing a rados env.
 struct RadosEnvOptions {
   RadosEnvOptions();
   // Rados mount point. All files and directories beneath it will sink into
-  // rados and be stored as plain data objects and special file set objects.
+  // rados and be stored as plain data objects and special fileset objects.
   // The portion of a file or a directory path beyond the mount point will be
-  // used to name a rados object or a file set.
+  // used to name a rados object or a fileset. Calling files or directories out
+  // of the mount point results in errors.
   // Default: "/"
   std::string rados_root;
   // Logger for env internal/error information.
@@ -65,7 +82,7 @@ struct RadosOptions {
   bool force_syncio;
 };
 
-// This primary interface an external user uses to obtain rados env objects.
+// The primary interface an external user uses to obtain rados env objects.
 // Creating a rados env is a 3-step process. A user first opens a rados
 // connection. Next, the user uses the connection to create a rados osd object.
 // The user then uses the rados osd object to obtain a rados env.
@@ -118,11 +135,21 @@ class RadosConnMgr {
   // be mapped to "_b_c". And if "rados_root" is "/a/b/c", directory "/a/b/c"
   // will then be mapped to "_".
   //
-  // RREQUIRES: osd is not NULL; if owns_osd is false, osd must remain alive
-  // before the returned Env is deleted.
+  // REQUIRES: osd is not NULL; if owns_osd is false, osd must remain alive
+  // while the returned env is being used.
   static Env* OpenEnv(Osd* osd, bool owns_osd, const RadosEnvOptions& options);
-  static Env* OpenDbEnv(Env* base_env, Osd* osd, bool owns_osd,
-                        const RadosEnvOptions& options);
+
+  // Create a wrapper env object atop a given rados env so that a db may run on
+  // top of it. 3 types of db files are stored locally (in a locally-mirrored
+  // directory) instead of rados: db info log files, db LOCK files, and tmp
+  // files to be renamed to special db CURRENT files.
+  //
+  // REQUIRES: rados_env is one returned by OpenEnv(); if owns_env is false,
+  // rados_env must remain alive while the returned env is being used; if
+  // base_env is NULL, Env::Default() is used.
+  static Env* CreateDbEnvWrapper(Env* rados_env, bool owns_env,
+                                 const RadosDbEnvOptions& options,
+                                 Env* base_env = NULL);
 
   void Release(RadosConn* conn);
 

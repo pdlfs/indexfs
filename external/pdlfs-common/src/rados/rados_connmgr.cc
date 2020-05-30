@@ -24,6 +24,11 @@ RadosConnOptions::RadosConnOptions()
 
 RadosConnMgrOptions::RadosConnMgrOptions() : info_log(NULL) {}
 
+RadosDbEnvOptions::RadosDbEnvOptions()
+    : write_ahead_log_buf_size(1 << 17),
+      table_file_buf_size(1 << 17),
+      info_log(NULL) {}
+
 RadosEnvOptions::RadosEnvOptions() : rados_root("/"), info_log(NULL) {}
 
 RadosOptions::RadosOptions() : force_syncio(false) {}
@@ -35,7 +40,7 @@ class RadosConnMgr::Rep {
   // State below protected by mutex_
   RadosConn list;  // Dummy list header
 
-  Rep(const RadosConnMgrOptions& options) : options(options) {
+  explicit Rep(const RadosConnMgrOptions& options) : options(options) {
     list.prev = &list;
     list.next = &list;
 
@@ -170,15 +175,18 @@ Env* RadosConnMgr::OpenEnv(  ///
   return env;
 }
 
-Env* RadosConnMgr::OpenDbEnv(  ///
-    Env* base_env, Osd* osd, bool owns_osd, const RadosEnvOptions& options) {
-  RadosDbEnvWrapper* const env = new RadosDbEnvWrapper(base_env);
-  env->rados_root_ = options.rados_root;
-  env->wal_buf_size_ = 1 << 17;  // 128 kB
-  env->owns_osd_ = owns_osd;
-  env->ofs_ = new Ofs(osd);
-  env->osd_ = osd;
-  return env;
+Env* RadosConnMgr::CreateDbEnvWrapper(  ///
+    Env* rados_env, bool owns_env, const RadosDbEnvOptions& options,
+    Env* base_env) {
+  if (!base_env) {
+    base_env = Env::Default();
+  }
+  RadosEnv* env = dynamic_cast<RadosEnv*>(rados_env);
+  RadosDbEnvWrapper* const wrapper = new RadosDbEnvWrapper(options, base_env);
+  wrapper->rados_root_ = &env->options_.rados_root;
+  wrapper->owns_env_ = owns_env;
+  wrapper->env_ = env;
+  return wrapper;
 }
 
 }  // namespace rados

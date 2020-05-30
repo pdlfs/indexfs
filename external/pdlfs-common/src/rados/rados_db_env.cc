@@ -15,57 +15,24 @@
 namespace pdlfs {
 namespace rados {
 
+RadosDbEnvWrapper::RadosDbEnvWrapper(  ///
+    const RadosDbEnvOptions& options, Env* base_env)
+    : EnvWrapper(base_env), options_(options), owns_env_(false), env_(NULL) {
+  if (!options_.info_log) {
+    options_.info_log = Logger::Default();
+  }
+}
+
 RadosDbEnvWrapper::~RadosDbEnvWrapper() {
-  if (owns_osd_) delete osd_;
-  delete ofs_;
-}
-
-Status RadosDbEnvWrapper::MountDir(const char* dirname, bool create_dir) {
-  Slice path = dirname;
-  assert(path.starts_with(rados_root_));
-  if (rados_root_.size() > 1) path.remove_prefix(rados_root_.size());
-  if (path.empty()) path = "/";
-  std::string name = path.ToString();
-  for (size_t i = 0; i < name.size(); i++)
-    if (name[i] == '/') name[i] = '_';
-
-  MountOptions options;
-  options.read_only = !create_dir;
-  options.create_if_missing = create_dir;
-  options.error_if_exists = false;
-  options.name = name;
-  Status s = ofs_->MountFileSet(options, dirname);
-  if (s.IsAlreadyExists()) {
-    // Force a local mirror
-    target()->CreateDir(dirname);  // Ignore errors
-  } else if (s.ok()) {
-    s = target()->CreateDir(dirname);
+  if (owns_env_) {
+    delete env_;
   }
-
-  return s;
-}
-
-Status RadosDbEnvWrapper::UnmountDir(const char* dirname, bool delete_dir) {
-  Status s;
-  UnmountOptions options;
-  options.deletion = delete_dir;
-  if (!delete_dir) s = ofs_->SynFileSet(dirname);
-  if (s.ok()) s = ofs_->UnmountFileSet(options, dirname);
-  if (s.IsNotFound()) {
-    // Remove local mirror
-    target()->DeleteDir(dirname);  // Ignore errors
-  } else if (s.ok()) {
-    s = target()->DeleteDir(dirname);
-  }
-
-  return s;
 }
 
 bool RadosDbEnvWrapper::PathOnRados(const char* pathname) {
-  const size_t n = rados_root_.length();
-  assert(n != 0);
+  const size_t n = rados_root_->size();
   if (n == 1) return true;
-  if (strncmp(pathname, rados_root_.c_str(), n) != 0) return false;
+  if (strncmp(pathname, rados_root_->c_str(), n) != 0) return false;
   return (pathname[n] == '/' || pathname[n] == '\0');
 }
 
@@ -75,68 +42,111 @@ bool RadosDbEnvWrapper::FileOnRados(const char* fname) {
 }
 
 bool RadosDbEnvWrapper::FileExists(const char* fname) {
-  if (FileOnRados(fname)) return ofs_->FileExists(fname);
+  if (FileOnRados(fname)) return env_->FileExists(fname);
   return target()->FileExists(fname);
 }
 
 Status RadosDbEnvWrapper::GetFileSize(const char* fname, uint64_t* size) {
-  if (FileOnRados(fname)) return ofs_->GetFileSize(fname, size);
+  if (FileOnRados(fname)) return env_->GetFileSize(fname, size);
   return target()->GetFileSize(fname, size);
 }
 
 Status RadosDbEnvWrapper::DeleteFile(const char* fname) {
-  if (FileOnRados(fname)) return ofs_->DeleteFile(fname);
+  if (FileOnRados(fname)) return env_->DeleteFile(fname);
   return target()->DeleteFile(fname);
 }
 
-Status RadosDbEnvWrapper::NewSequentialFile(const char* fname, SequentialFile** r) {
-  if (FileOnRados(fname)) return ofs_->NewSequentialFile(fname, r);
+Status RadosDbEnvWrapper::NewSequentialFile(  ///
+    const char* fname, SequentialFile** r) {
+  if (FileOnRados(fname)) return env_->NewSequentialFile(fname, r);
   return target()->NewSequentialFile(fname, r);
 }
 
-Status RadosDbEnvWrapper::NewRandomAccessFile(const char* fname, RandomAccessFile** r) {
-  if (FileOnRados(fname)) return ofs_->NewRandomAccessFile(fname, r);
+Status RadosDbEnvWrapper::NewRandomAccessFile(  ///
+    const char* fname, RandomAccessFile** r) {
+  if (FileOnRados(fname)) return env_->NewRandomAccessFile(fname, r);
   return target()->NewRandomAccessFile(fname, r);
 }
 
+Status RadosDbEnvWrapper::LocalCreateOrAttachDir(  ///
+    const char* dirname, const Status& remote_status) {
+  Status s;
+  // After this call, we want to make sure that the local dir exists
+  // if the remote dir has been, or has already been, created.
+  if (remote_status.ok() || remote_status.IsAlreadyExists()) {
+    s = target()->CreateDir(dirname);
+    if (s.ok() || s.IsAlreadyExists()) {
+      s = remote_status;  // Return the remote status to caller
+    }
+  }
+  return s;
+}
+
 Status RadosDbEnvWrapper::CreateDir(const char* dirname) {
-  if (PathOnRados(dirname)) return MountDir(dirname, true);
+  if (PathOnRados(dirname)) {
+    return LocalCreateOrAttachDir(dirname, env_->CreateDir(dirname));
+  }
   return target()->CreateDir(dirname);
 }
 
 Status RadosDbEnvWrapper::AttachDir(const char* dirname) {
-  if (PathOnRados(dirname)) return MountDir(dirname, false);
+  if (PathOnRados(dirname)) {
+    return LocalCreateOrAttachDir(dirname, env_->AttachDir(dirname));
+  }
   return target()->AttachDir(dirname);
 }
 
+// Return not found when neither the local nor the remote dir has been found.
+// Return OK if either the local or the remote dir has been found and has been
+// successfully deleted. Return a non-OK status if deleting either one resulted
+// in an error.
+Status RadosDbEnvWrapper::LocalDeleteDir(  ///
+    const char* dirname, const Status& remote_status) {
+  Status s;
+  if (remote_status.ok()) {
+    s = target()->DeleteDir(dirname);
+    if (s.IsNotFound()) {
+      s = remote_status;  // OK for local to miss when the remote exists
+    }
+  } else if (remote_status.IsNotFound()) {
+    s = target()->DeleteDir(dirname);
+  }
+  return s;
+}
+
 Status RadosDbEnvWrapper::DeleteDir(const char* dirname) {
-  if (PathOnRados(dirname)) return UnmountDir(dirname, true);
+  if (PathOnRados(dirname)) {
+    return LocalDeleteDir(dirname, env_->DeleteDir(dirname));
+  }
   return target()->DeleteDir(dirname);
 }
 
 Status RadosDbEnvWrapper::DetachDir(const char* dirname) {
-  if (PathOnRados(dirname)) return UnmountDir(dirname, false);
+  if (PathOnRados(dirname)) return env_->DetachDir(dirname);
   return target()->DetachDir(dirname);
 }
 
 Status RadosDbEnvWrapper::CopyFile(const char* src, const char* dst) {
-  const int src_on_rados = FileOnRados(src);
-  const int dst_on_rados = FileOnRados(dst);
-  if (src_on_rados ^ dst_on_rados) return Status::NotSupported(Slice());
-  if (src_on_rados) return ofs_->CopyFile(src, dst);
+  const bool src_on_rados = FileOnRados(src);
+  const bool dst_on_rados = FileOnRados(dst);
+  if (src_on_rados ^ dst_on_rados)
+    return Status::NotSupported("Cannot copy file across env boundaries");
+  if (src_on_rados) return env_->CopyFile(src, dst);
   return target()->CopyFile(src, dst);
 }
 
 Status RadosDbEnvWrapper::RenameFile(const char* src, const char* dst) {
-  const int src_on_rados = FileOnRados(src);
-  const int dst_on_rados = FileOnRados(dst);
+  const bool src_on_rados = FileOnRados(src);
+  const bool dst_on_rados = FileOnRados(dst);
   if (TryResolveFileType(src) == kTempFile && !src_on_rados && dst_on_rados)
     return RenameLocalTmpToRados(src, dst);
-  if (!src_on_rados && !dst_on_rados) return target()->RenameFile(src, dst);
-  return Status::NotSupported(Slice());
+  if (src_on_rados || dst_on_rados)
+    return Status::NotSupported("Cannot rename files over rados");
+  return target()->RenameFile(src, dst);
 }
 
-Status RadosDbEnvWrapper::GetChildren(const char* dirname, std::vector<std::string>* r) {
+Status RadosDbEnvWrapper::GetChildren(const char* dirname,
+                                      std::vector<std::string>* r) {
   r->clear();
   Status s = target()->GetChildren(dirname, r);
   if (PathOnRados(dirname)) {
@@ -144,7 +154,7 @@ Status RadosDbEnvWrapper::GetChildren(const char* dirname, std::vector<std::stri
     // The previous status is over-written because it is all right for
     // local directory listing to fail since it is possible for a directory
     // to not have a local mirror.
-    s = ofs_->GetChildren(dirname, &rr);
+    s = env_->GetChildren(dirname, &rr);
     if (s.ok()) {
       r->insert(r->end(), rr.begin(), rr.end());
     }
@@ -153,11 +163,23 @@ Status RadosDbEnvWrapper::GetChildren(const char* dirname, std::vector<std::stri
 }
 
 Status RadosDbEnvWrapper::NewWritableFile(const char* fname, WritableFile** r) {
-  const size_t buf_size = wal_buf_size_;
   if (FileOnRados(fname)) {
-    Status s = ofs_->NewWritableFile(fname, r);
-    if (s.ok() && buf_size > 0 && TryResolveFileType(fname) == kLogFile) {
-      *r = new MinMaxBufferedWritableFile(*r, buf_size, buf_size);
+    Status s = env_->NewWritableFile(fname, r);
+    if (s.ok()) {
+      uint64_t buf_sz = 0;
+      switch (TryResolveFileType(fname)) {
+        case kLogFile:
+          buf_sz = options_.write_ahead_log_buf_size;
+          break;
+        case kTableFile:
+          buf_sz = options_.table_file_buf_size;
+          break;
+        default:  // No buffers
+          break;
+      }
+      if (buf_sz) {
+        *r = new MinMaxBufferedWritableFile(*r, buf_sz, buf_sz);
+      }
     }
     return s;
   } else {
@@ -165,11 +187,12 @@ Status RadosDbEnvWrapper::NewWritableFile(const char* fname, WritableFile** r) {
   }
 }
 
-Status RadosDbEnvWrapper::RenameLocalTmpToRados(const char* tmp, const char* dst) {
+Status RadosDbEnvWrapper::RenameLocalTmpToRados(const char* tmp,
+                                                const char* dst) {
   std::string contents;
   Status s = ReadFileToString(target(), tmp, &contents);
   if (s.ok()) {
-    s = ofs_->WriteStringToFile(dst, contents);  // Atomic
+    s = env_->TEST_GetOfs()->WriteStringToFile(dst, contents);
     if (s.ok()) {
       target()->DeleteFile(tmp);
     }

@@ -36,19 +36,25 @@ class RadosDbEnvWrapper : public EnvWrapper {
   virtual Status DetachDir(const char* dir);
 
  private:
-  Status MountDir(const char* dir, bool force_create);
-  Status UnmountDir(const char* dir, bool force_delete);
-  Status RenameLocalTmpToRados(const char* tmp, const char* dst);
+  Status LocalCreateOrAttachDir(const char* dir, const Status& rs);
+  Status LocalDeleteDir(const char* dir, const Status& rs);
   bool PathOnRados(const char* pathname);
   bool FileOnRados(const char* fname);
-
-  RadosDbEnvWrapper(Env* e) : EnvWrapper(e) {}
+  Status RenameLocalTmpToRados(const char* tmp, const char* dst);
+  RadosDbEnvWrapper(
+      const RadosDbEnvOptions& options,
+      Env* base_env);  // Full construction is done through RadosConnMgr
   friend class RadosConnMgr;
-  size_t wal_buf_size_;
-  std::string rados_root_;
-  Ofs* ofs_;
-  bool owns_osd_;
-  Osd* osd_;
+  // Constant after construction
+  RadosDbEnvOptions options_;
+  // Rados mount point. In general, files and directories beneath the mount
+  // point are stored in rados. Files and directories out of it are stored in a
+  // local env. Some db files (db info log files, db LOCK files, and db tmp
+  // files) are stored locally (in a locally-mirrored directory) even if they
+  // are within the rados mount point.
+  const std::string* rados_root_;  // Cache for &env_->options_.rados_root
+  bool owns_env_;
+  RadosEnv* env_;  // The raw rados env
 };
 
 inline FileType TryResolveFileType(const char* fname) {

@@ -41,14 +41,15 @@ class RadosEnvTest {
 
   void Open() {
     RadosConn* conn;
-    ASSERT_OK(mgr_->OpenConn(FLAGS_rados_cluster_name, FLAGS_user_name,
-                             FLAGS_conf, RadosConnOptions(), &conn));
     Osd* osd;
+    ASSERT_OK(mgr_->OpenConn(  ///
+        FLAGS_rados_cluster_name, FLAGS_user_name, FLAGS_conf,
+        RadosConnOptions(), &conn));
     ASSERT_OK(mgr_->OpenOsd(conn, FLAGS_pool_name, RadosOptions(), &osd));
-    env_ =
-        RadosConnMgr::OpenDbEnv(Env::Default(), osd, true, RadosEnvOptions());
-    mgr_->Release(conn);
+    env_ = mgr_->OpenEnv(osd, true, RadosEnvOptions());
+    env_ = mgr_->CreateDbEnvWrapper(env_, true, RadosDbEnvOptions());
     env_->CreateDir(working_dir_.c_str());
+    mgr_->Release(conn);
   }
 
   ~RadosEnvTest() {

@@ -43,6 +43,8 @@ class RadosEnv : public Env {
   virtual Status GetTestDirectory(std::string* path);
   virtual Status NewLogger(const char* fname, Logger** result);
 
+  Ofs* TEST_GetOfs() { return ofs_; }
+
  private:
   Status MountDir(const char* dir, bool create_dir);
   Status UnmountDir(const char* dir, bool also_delete_dir);
