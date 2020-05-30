@@ -104,6 +104,7 @@ TEST(RadosEnvTest, ListDbFiles) {
 }
 
 TEST(RadosEnvTest, DB) {
+  Open();
   DBOptions options;
   options.env = env_;
   DB* db;
