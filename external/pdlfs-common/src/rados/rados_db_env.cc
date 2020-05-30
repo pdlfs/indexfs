@@ -75,6 +75,10 @@ Status RadosDbEnvWrapper::LocalCreateOrAttachDir(  ///
   // if the remote dir has been, or has already been, created.
   if (remote_status.ok() || remote_status.IsAlreadyExists()) {
     s = target()->CreateDir(dirname);
+#if VERBOSE >= 1
+    Log(options_.info_log, 1, "Creating dir %s: %s (rados), %s (lo)", dirname,
+        remote_status.ToString().c_str(), s.ToString().c_str());
+#endif
     if (s.ok() || s.IsAlreadyExists()) {
       s = remote_status;  // Return the remote status to caller
     }
@@ -105,6 +109,10 @@ Status RadosDbEnvWrapper::LocalDeleteDir(  ///
   Status s;
   if (remote_status.ok()) {
     s = target()->DeleteDir(dirname);
+#if VERBOSE >= 1
+    Log(options_.info_log, 1, "Deleting dir %s: OK (rados), %s (lo)", dirname,
+        s.ToString().c_str());
+#endif
     if (s.IsNotFound()) {
       s = remote_status;  // OK for local to miss when the remote exists
     }
