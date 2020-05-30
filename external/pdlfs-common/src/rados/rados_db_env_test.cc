@@ -103,6 +103,23 @@ TEST(RadosEnvTest, ListDbFiles) {
   }
 }
 
+TEST(RadosEnvTest, DB) {
+  DBOptions options;
+  options.env = env_;
+  DB* db;
+  ASSERT_OK(DB::Open(options, working_dir_, &db));
+  WriteOptions wo;
+  ASSERT_OK(db->Put(wo, "k1", "v1"));
+  FlushOptions fo;
+  ASSERT_OK(db->FlushMemTable(fo));
+  db->CompactRange(NULL, NULL);
+  ASSERT_OK(db->Put(wo, "k2", "v2"));
+  delete db;
+  ASSERT_OK(DB::Open(options, working_dir_, &db));
+  delete db;
+  DestroyDB(working_dir_, options);
+}
+
 }  // namespace rados
 }  // namespace pdlfs
 
