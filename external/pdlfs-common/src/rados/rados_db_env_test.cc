@@ -96,7 +96,9 @@ TEST(RadosEnvTest, ListDbFiles) {
   std::vector<std::string> r;
   ASSERT_OK(env_->GetChildren(working_dir_.c_str(), &r));
   for (size_t i = 0; i < fnames.size(); i++) {
-    ASSERT_TRUE(std::find(r.begin(), r.end(), fnames[i]) != r.end());
+    ASSERT_TRUE(std::find(r.begin(), r.end(),
+                          fnames[i].substr(working_dir_.size() + 1)) !=
+                r.end());
     ASSERT_OK(env_->DeleteFile(fnames[i].c_str()));
   }
 }
