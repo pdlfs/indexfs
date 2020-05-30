@@ -106,6 +106,7 @@ TEST(RadosEnvTest, ListDbFiles) {
 TEST(RadosEnvTest, DB) {
   Open();
   DBOptions options;
+  options.create_if_missing = true;
   options.env = env_;
   DB* db;
   ASSERT_OK(DB::Open(options, working_dir_, &db));
@@ -116,6 +117,7 @@ TEST(RadosEnvTest, DB) {
   db->CompactRange(NULL, NULL);
   ASSERT_OK(db->Put(wo, "k2", "v2"));
   delete db;
+  options.error_if_exists = false;
   ASSERT_OK(DB::Open(options, working_dir_, &db));
   delete db;
   DestroyDB(working_dir_, options);
