@@ -43,6 +43,7 @@ struct RadosConnMgrOptions {
   Logger* info_log;
 };
 
+// Options for creating a rados db env wrapper.
 struct RadosDbEnvOptions {
   RadosDbEnvOptions();
 
@@ -137,6 +138,8 @@ class RadosConnMgr {
   //
   // REQUIRES: osd is not NULL; if owns_osd is false, osd must remain alive
   // while the returned env is being used.
+  //
+  // This operation does not incur remote rados operations and will not fail.
   static Env* OpenEnv(Osd* osd, bool owns_osd, const RadosEnvOptions& options);
 
   // Create a wrapper env object atop a given rados env so that a db may run on
@@ -147,6 +150,8 @@ class RadosConnMgr {
   // REQUIRES: rados_env is one returned by OpenEnv(); if owns_env is false,
   // rados_env must remain alive while the returned env is being used; if
   // base_env is NULL, Env::Default() is used.
+  //
+  // This operation does not incur remote rados operations and will not fail.
   static Env* CreateDbEnvWrapper(Env* rados_env, bool owns_env,
                                  const RadosDbEnvOptions& options,
                                  Env* base_env = NULL);
