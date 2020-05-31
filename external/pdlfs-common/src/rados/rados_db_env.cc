@@ -106,19 +106,21 @@ Status RadosDbEnvWrapper::AttachDir(const char* dirname) {
 // in an error.
 Status RadosDbEnvWrapper::LocalDeleteDir(  ///
     const char* dirname, const Status& remote_status) {
-  Status s;
+  Status s, local_status;
   if (remote_status.ok()) {
-    s = target()->DeleteDir(dirname);
-#if VERBOSE >= 1
-    Log(options_.info_log, 1, "Deleting dir %s: OK (rados), %s (lo)", dirname,
-        s.ToString().c_str());
-#endif
+    local_status = target()->DeleteDir(dirname);
+    s = local_status;
     if (s.IsNotFound()) {
       s = remote_status;  // OK for local to miss when the remote exists
     }
   } else if (remote_status.IsNotFound()) {
-    s = target()->DeleteDir(dirname);
+    local_status = target()->DeleteDir(dirname);
+    s = local_status;
   }
+#if VERBOSE >= 1
+  Log(options_.info_log, 1, "Deleting dir %s: %s (rados), %s (lo)", dirname,
+      remote_status.ToString().c_str(), local_status.ToString().c_str());
+#endif
   return s;
 }
 

@@ -51,8 +51,8 @@ Status RadosEnv::MountDir(const char* dirname, bool create_dir) {
   options.name = name;
   Status s = ofs_->MountFileSet(options, dirname);
 #if VERBOSE >= 1
-  Log(options_.info_log, 1, "Mounting %s at %s (create=%d): %s", name.c_str(),
-      dirname, create_dir, s.ToString().c_str());
+  Log(options_.info_log, 1, "Mounting obj(%s) at %s (create=%d): %s",
+      name.c_str(), dirname, create_dir, s.ToString().c_str());
 #endif
   return s;
 }
