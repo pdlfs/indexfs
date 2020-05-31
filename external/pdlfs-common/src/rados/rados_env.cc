@@ -50,7 +50,7 @@ Status RadosEnv::MountDir(const char* dirname, bool create_dir) {
   options.error_if_exists = false;
   options.name = name;
   Status s = ofs_->MountFileSet(options, dirname);
-#if VERBOSE >= 1
+#if VERBOSE >= 2
   Log(options_.info_log, 1, "Mounting obj(%s) at %s (create=%d): %s",
       name.c_str(), dirname, create_dir, s.ToString().c_str());
 #endif
@@ -65,7 +65,7 @@ Status RadosEnv::UnmountDir(const char* dirname, bool also_delete_dir) {
   if (s.ok()) {
     s = ofs_->UnmountFileSet(options, dirname);
   }
-#if VERBOSE >= 1
+#if VERBOSE >= 2
   Log(options_.info_log, 1, "Unmounting %s (delete=%d): %s", dirname,
       also_delete_dir, s.ToString().c_str());
 #endif
