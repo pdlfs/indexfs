@@ -19,6 +19,7 @@ namespace rados {
 
 class RadosDbEnvWrapper : public EnvWrapper {
  public:
+  Env* TEST_GetRadosEnv() { return env_; }
   virtual ~RadosDbEnvWrapper();
   virtual Status NewSequentialFile(const char* f, SequentialFile** r);
   virtual Status NewRandomAccessFile(const char* f, RandomAccessFile** r);

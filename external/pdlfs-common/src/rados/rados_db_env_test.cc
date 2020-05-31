@@ -102,13 +102,12 @@ TEST(RadosEnvTest, ListDbFiles) {
   }
 }
 
-TEST(RadosEnvTest, DB) {
+TEST(RadosEnvTest, Db) {
   Open();
   DBOptions options;
   options.create_if_missing = true;
   options.env = env_;
   DB* db;
-  fprintf(stderr, "Opening db...\n");
   ASSERT_OK(DB::Open(options, working_dir_, &db));
   WriteOptions wo;
   ASSERT_OK(db->Put(wo, "k1", "v1"));
@@ -118,12 +117,32 @@ TEST(RadosEnvTest, DB) {
   ASSERT_OK(db->Put(wo, "k2", "v2"));
   delete db;
   options.error_if_exists = false;
-  fprintf(stderr, "Reopening db...\n");
   ASSERT_OK(DB::Open(options, working_dir_, &db));
   delete db;
-  fprintf(stderr, "Destroying db...\n");
   DestroyDB(working_dir_, options);
-  fprintf(stderr, "Done\n");
+}
+
+TEST(RadosEnvTest, IoSimplifiedDb) {
+  Open();
+  DBOptions options;
+  options.info_log = Logger::Default();
+  options.rotating_manifest = true;
+  options.skip_lock_file = true;
+  options.create_if_missing = true;
+  options.env = dynamic_cast<RadosDbEnvWrapper*>(env_)->TEST_GetRadosEnv();
+  DB* db;
+  ASSERT_OK(DB::Open(options, working_dir_, &db));
+  WriteOptions wo;
+  ASSERT_OK(db->Put(wo, "k1", "v1"));
+  FlushOptions fo;
+  ASSERT_OK(db->FlushMemTable(fo));
+  db->CompactRange(NULL, NULL);
+  ASSERT_OK(db->Put(wo, "k2", "v2"));
+  delete db;
+  options.error_if_exists = false;
+  ASSERT_OK(DB::Open(options, working_dir_, &db));
+  delete db;
+  DestroyDB(working_dir_, options);
 }
 
 }  // namespace rados

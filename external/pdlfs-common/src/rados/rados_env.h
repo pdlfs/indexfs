@@ -18,6 +18,7 @@ namespace rados {
 
 class RadosEnv : public Env {
  public:
+  Ofs* TEST_GetOfs() { return ofs_; }
   virtual ~RadosEnv();
   virtual Status NewSequentialFile(const char* f, SequentialFile** r);
   virtual Status NewRandomAccessFile(const char* f, RandomAccessFile** r);
@@ -42,8 +43,6 @@ class RadosEnv : public Env {
   virtual void StartThread(void (*f)(void*), void* a);
   virtual Status GetTestDirectory(std::string* path);
   virtual Status NewLogger(const char* fname, Logger** result);
-
-  Ofs* TEST_GetOfs() { return ofs_; }
 
  private:
   Status MountDir(const char* dir, bool create_dir);
