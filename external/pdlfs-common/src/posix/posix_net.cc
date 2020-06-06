@@ -80,7 +80,7 @@ Status PosixSocketAddr::Resolv(const char* host, bool is_numeric) {
   }
   int rv = getaddrinfo(host, NULL, &hints, &ai);
   if (rv != 0) {
-    return Status::IOError("getaddrinfo", gai_strerror(rv));
+    return Status::IOError("Cannot resolve host", gai_strerror(rv));
   }
   const struct sockaddr_in* const in =
       reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
@@ -113,16 +113,16 @@ Status PosixIf::IfConf(std::vector<Ifr>* results) {
 
 Status PosixIf::Open() {
   Status s;
-  fd_ = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);  // Ignore ipv6
+  fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (fd_ == -1) {
-    s = PosixError("socket", errno);
+    s = PosixError("Cannot open socket", errno);
     return s;
   }
 
   ifconf_.ifc_len = sizeof(ifr_);
   int r = ioctl(fd_, SIOCGIFCONF, &ifconf_);
   if (r == -1) {
-    s = PosixError("ioctl", errno);
+    s = PosixError("Cannot obtain L3 interface addresses (SIOCGIFCONF)", errno);
     ifconf_.ifc_len = 0;
   }
 
