@@ -17,7 +17,9 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 namespace pdlfs {
 
@@ -210,6 +212,12 @@ Status PosixIf::Open() {
   }
 
   return s;
+}
+
+PosixIf::~PosixIf() {
+  if (fd_ != -1) {
+    close(fd_);
+  }
 }
 
 // Return all network addresses associated with us.

@@ -15,8 +15,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <vector>
 
 namespace pdlfs {
@@ -98,21 +96,15 @@ class PosixIf {
     ifconf_.ifc_len = 0;
   }
 
-  ~PosixIf() {
-    if (fd_ != -1) {
-      close(fd_);
-    }
-  }
-
+  ~PosixIf();
   Status IfConf(std::vector<Ifr>* results);
-
   Status Open();
 
  private:
-  struct ifreq ifr_[64];  // If record buffer
+  struct ifreq ifr_[64];  // Record buffer; statically allocated
   struct ifconf ifconf_;
   // No copying allowed
-  void operator=(const PosixIf&);
+  void operator=(const PosixIf& other);
   PosixIf(const PosixIf&);
 
   int fd_;
