@@ -342,8 +342,8 @@ class ServerUDPSocket {
   ServerUDPSocket() {}
   virtual ~ServerUDPSocket();
 
-  virtual Status OpenAndBind(const std::string& uri);
-  virtual Status Recv(std::string* msg);
+  virtual Status OpenAndBind(const std::string& uri) = 0;
+  virtual Status Recv(Slice* msg, char* scratch, size_t n) = 0;
 
  private:
   // No copying allowed
@@ -357,8 +357,8 @@ class UDPSocket {
   UDPSocket() {}
   virtual ~UDPSocket();
 
-  virtual Status Open(const std::string& uri);
-  virtual Status Send(const Slice& msg);
+  virtual Status Connect(const std::string& uri) = 0;
+  virtual Status Send(const Slice& msg) = 0;
 
  private:
   // No copy allowed

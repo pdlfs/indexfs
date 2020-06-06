@@ -14,6 +14,7 @@
 
 #include <net/if.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <vector>
@@ -52,6 +53,32 @@ class PosixSocketAddr {
   struct sockaddr_in addr_;
 
   // Copyable
+};
+
+// Posix server UDP socket.
+class PosixServerUDPSocket : public ServerUDPSocket {
+ public:
+  PosixServerUDPSocket();
+  virtual ~PosixServerUDPSocket();
+
+  virtual Status OpenAndBind(const std::string& uri);
+  virtual Status Recv(Slice* msg, char* scratch, size_t n);
+
+ private:
+  int fd_;
+};
+
+// Posix UDP.
+class PosixUDPSocket : public UDPSocket {
+ public:
+  PosixUDPSocket();
+  virtual ~PosixUDPSocket();
+
+  virtual Status Connect(const std::string& uri);
+  virtual Status Send(const Slice& msg);
+
+ private:
+  int fd_;
 };
 
 struct Ifr {

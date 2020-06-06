@@ -15,12 +15,15 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
-#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 
 namespace pdlfs {
+
+PosixServerUDPSocket::PosixServerUDPSocket() : fd_(-1) {}
+
+PosixUDPSocket::PosixUDPSocket() : fd_(-1) {}
 
 // Return errors as status objects.
 extern Status PosixError(const Slice& err_context, int err_number);
@@ -80,13 +83,93 @@ Status PosixSocketAddr::Resolv(const char* host, bool is_numeric) {
   }
   int rv = getaddrinfo(host, NULL, &hints, &ai);
   if (rv != 0) {
-    return Status::IOError("Cannot resolve host", gai_strerror(rv));
+    return Status::IOError("Cannot resolve host str", gai_strerror(rv));
   }
   const struct sockaddr_in* const in =
       reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
   addr_.sin_addr = in->sin_addr;
   freeaddrinfo(ai);
   return Status::OK();
+}
+
+Status PosixServerUDPSocket::OpenAndBind(const std::string& uri) {
+  PosixSocketAddr addr;
+  Status status = addr.ResolvUri(uri);
+  if (!status.ok()) {
+    return status;
+  }
+  // Try opening the server. If we fail we will clean up so that we can try
+  // again later.
+  fd_ = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd_ == -1) {
+    status = PosixError("Cannot open socket", errno);
+  } else {
+    int rv = bind(fd_, reinterpret_cast<struct sockaddr*>(addr.rep()),
+                  sizeof(*addr.rep()));
+    if (rv == -1) {
+      char msg[100];
+      snprintf(msg, sizeof(msg), "Cannot bind to %s", addr.GetUri().c_str());
+      status = PosixError(msg, errno);
+      close(fd_);
+      fd_ = -1;
+    }
+  }
+  return status;
+}
+
+Status PosixServerUDPSocket::Recv(Slice* msg, char* scratch, size_t n) {
+  Status status;
+  ssize_t rv = recv(fd_, scratch, n, 0);
+  if (rv == -1) {
+    status = PosixError("Cannot recv data via UDP", errno);
+  } else {
+    *msg = Slice(scratch, rv);
+  }
+  return status;
+}
+
+PosixServerUDPSocket::~PosixServerUDPSocket() {
+  if (fd_ != -1) {
+    close(fd_);
+  }
+}
+
+Status PosixUDPSocket::Connect(const std::string& uri) {
+  PosixSocketAddr addr;
+  Status status = addr.ResolvUri(uri);
+  if (!status.ok()) {
+    return status;
+  }
+  fd_ = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd_ == -1) {
+    status = PosixError("Cannot open socket", errno);
+  } else {
+    int rv = connect(fd_, reinterpret_cast<struct sockaddr*>(addr.rep()),
+                     sizeof(*addr.rep()));
+    if (rv == -1) {
+      char msg[100];
+      snprintf(msg, sizeof(msg), "Cannot connect to %s", addr.GetUri().c_str());
+      status = PosixError(msg, errno);
+      close(fd_);
+      fd_ = -1;
+    }
+  }
+  return status;
+}
+
+Status PosixUDPSocket::Send(const Slice& msg) {
+  Status status;
+  ssize_t rv = send(fd_, msg.data(), msg.size(), 0);
+  if (rv != msg.size()) {
+    status = PosixError("Cannot send data through an UDP socket", errno);
+  }
+  return status;
+}
+
+PosixUDPSocket::~PosixUDPSocket() {
+  if (fd_ != -1) {
+    close(fd_);
+  }
 }
 
 Status PosixIf::IfConf(std::vector<Ifr>* results) {
@@ -147,7 +230,7 @@ Status FetchHostIPAddrs(std::vector<std::string>* ips) {
 Status FetchHostname(std::string* hostname) {
   char buf[HOST_NAME_MAX];
   if (gethostname(buf, sizeof(buf)) == -1) {
-    return PosixError("gethostname", errno);
+    return PosixError("Cannot get hostname (gethostname)", errno);
   } else {
     *hostname = buf;
     return Status::OK();
