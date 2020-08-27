@@ -10,7 +10,11 @@
  */
 
 #include "pdlfs-common/fsdbbase.h"
+
 #include "pdlfs-common/port.h"
+#if defined(DELTAFS) || defined(INDEXFS)
+#include "pdlfs-common/gigaplus.h"
+#endif
 
 // All fs keys consist of a prefix component and a suffix component. In both
 // tablefs and indexfs, the prefix of a key is a 64-bit integer with the
